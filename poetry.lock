@@ -26,7 +26,7 @@ tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
 
 [[package]]
 name = "chunksum"
-version = "0.2.0"
+version = "0.2.1"
 description = "Print FastCDC rolling hash chunks and checksums."
 category = "main"
 optional = false
@@ -117,19 +117,20 @@ tests = ["freezegun", "pytest", "pytest-cov"]
 
 [[package]]
 name = "importlib-metadata"
-version = "4.2.0"
+version = "5.0.0"
 description = "Read metadata from Python packages"
 category = "dev"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
 zipp = ">=0.5"
 
 [package.extras]
-docs = ["jaraco.packaging (>=8.2)", "rst.linker (>=1.9)", "sphinx"]
-testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pep517", "pyfakefs", "pytest (>=4.6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.0.1)", "pytest-flake8", "pytest-mypy"]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)"]
+perf = ["ipython"]
+testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)"]
 
 [[package]]
 name = "iniconfig"
@@ -275,7 +276,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "849c419ccd5cfc63b4673722bf6095395cd39b84255877cab08796d0acd8d404"
+content-hash = "91864cab5b840a03685fb6fbf4e972fe02a08b0de667a697269c7b966305fadc"
 
 [metadata.files]
 attrs = [
@@ -287,8 +288,8 @@ autoflake = [
     {file = "autoflake-1.7.7.tar.gz", hash = "sha256:c8e4fc41aa3eae0f5c94b939e3a3d50923d7a9306786a6cbf4866a077b8f6832"},
 ]
 chunksum = [
-    {file = "chunksum-0.2.0-py3-none-any.whl", hash = "sha256:73d68d11dda0762b0f5a37d17a9e6168497c1bf04f057f3be08764f77a03e5eb"},
-    {file = "chunksum-0.2.0.tar.gz", hash = "sha256:5d69253be7349eee62819de00f870709a27af420f27414e009cc0dab60c5cd96"},
+    {file = "chunksum-0.2.1-py3-none-any.whl", hash = "sha256:461510789ce6da11aea65c1d0ace6e933ffd87ab9661935994e07628e4fee7bf"},
+    {file = "chunksum-0.2.1.tar.gz", hash = "sha256:6b3cb4f13da44ae0cd3dcce39d6c107d0677a5a29eafa47a13cd427b90f67563"},
 ]
 click = [
     {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
@@ -329,8 +330,8 @@ humanize = [
     {file = "humanize-2.6.0.tar.gz", hash = "sha256:8ee358ea6c23de896b9d1925ebe6a8504bb2ba7e98d5ccf4d07ab7f3b28f3819"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.2.0-py3-none-any.whl", hash = "sha256:057e92c15bc8d9e8109738a48db0ccb31b4d9d5cfbee5a8670879a30be66304b"},
-    {file = "importlib_metadata-4.2.0.tar.gz", hash = "sha256:b7e52a1f8dec14a75ea73e0891f3060099ca1d8e6a462a4dff11c3e119ea1b31"},
+    {file = "importlib_metadata-5.0.0-py3-none-any.whl", hash = "sha256:ddb0e35065e8938f867ed4928d0ae5bf2a53b7773871bfe6bcc7e4fcdc7dea43"},
+    {file = "importlib_metadata-5.0.0.tar.gz", hash = "sha256:da31db32b304314d044d3c12c79bd59e307889b287ad12ff387b3500835fc2ab"},
 ]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
