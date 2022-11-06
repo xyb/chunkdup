@@ -21,7 +21,7 @@ chunkdup = 'chunkdup.chunkdup:main'
 
 [tool.poetry.dependencies]
 python = "^3.7"
-chunksum = "^0.2.1"
+chunksum = "^0.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
