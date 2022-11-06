@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "findup"
+name = "chunkdup"
 version = "0.1.0"
 description = "Find (partial content) duplicate files."
 authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/xyb/findup"
-repository = "https://github.com/xyb/findup"
+homepage = "https://github.com/xyb/chunkdup"
+repository = "https://github.com/xyb/chunkdup"
 classifiers = [
     "Environment :: Console",
     "Development Status :: 3 - Alpha",
@@ -14,10 +14,10 @@ classifiers = [
 ]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/xyb/findup/issues"
+"Bug Tracker" = "https://github.com/xyb/chunkdup/issues"
 
 [tool.poetry.scripts]
-findup = 'findup.findup:main'
+chunkdup = 'chunkdup.chunkdup:main'
 
 [tool.poetry.dependencies]
 python = "^3.7"
