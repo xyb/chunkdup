@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "findup"
+version = "0.1.0"
+description = "Find (partial content) duplicate files."
+authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/xyb/findup"
+repository = "https://github.com/xyb/findup"
+classifiers = [
+    "Environment :: Console",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Utilities",
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/xyb/findup/issues"
+
+[tool.poetry.scripts]
+findup = 'findup.findup:main'
+
+[tool.poetry.dependencies]
+python = "^3.7"
+chunksum = "^0.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+flake8 = "^5.0.4"
+isort = "^5.10.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
