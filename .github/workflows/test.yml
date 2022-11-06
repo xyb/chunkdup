@@ -29,7 +29,10 @@ jobs:
           virtualenvs-in-project: true
           installer-parallel: true
 
-      - run: poetry install --no-interaction --no-root
+      - name: install dependencies
+        run: |
+          source .venv/bin/activate
+          poetry install --no-interaction --no-root
 
       - name: run tests
         run: |
