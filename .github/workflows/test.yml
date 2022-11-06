@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - run: pip install poetry
+      - uses: Gr1N/setup-poetry@v7
 
       - run: poetry install
 
