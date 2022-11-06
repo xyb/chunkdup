@@ -1,0 +1,36 @@
+name: test
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: py-${{ matrix.python-version }} rf-${{ matrix.robotframework-version }} ${{ matrix.platform }}
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.7, 3.8, 3.9, "3.10"]
+        platform: [ubuntu-latest, macOS-latest]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade poetry
+        poetry install
+    - name: flake8
+      run: |
+        flake8 . --count --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=80 --statistics
+    - name: isort
+      run: |
+        isort -c chunkdup/
+    - name: Test
+      run: |
+        make test
