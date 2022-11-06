@@ -1,0 +1,61 @@
+name: test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.7, 3.8, 3.9, "3.10", 3.11]
+        os:
+          - ubuntu
+          - macOS
+          #- windows
+
+    name: tests
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - run: poetry install --no-interaction --no-root
+
+      - name: run tests
+        run: |
+          source .venv/bin/activate
+          pytest --doctest-modules --last-failed --durations=3
+
+  lint:
+    name: pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+
+      - name: install pre-commit
+        run: pip install pre-commit
+
+      - name: pre-commit cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: "${{ hashFiles('.pre-commit-config.yaml') }}"
+
+      - run: pre-commit run --all-files --show-diff-on-failure

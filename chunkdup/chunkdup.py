@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys
 
 from chunksum.parser import parse_chunksums
@@ -13,14 +12,14 @@ class CheckSumIndex:
         self._file_id2chunk = {}  # file id -> hash
         file_id = 0
         for s in sums:
-            self._files[s['path']] = dict(
+            self._files[s["path"]] = dict(
                 id=file_id,
-                checksum=s['checksum'],
-                chunks=s['chunks'],
-                size=sum([size for _, size in s['chunks']])
+                checksum=s["checksum"],
+                chunks=s["chunks"],
+                size=sum([size for _, size in s["chunks"]]),
             )
-            self._file_ids[file_id] = s['path']
-            cids = [c for c, _ in s['chunks']]
+            self._file_ids[file_id] = s["path"]
+            cids = [c for c, _ in s["chunks"]]
             for c in cids:
                 self._chunk2file_id.setdefault(c, []).append(file_id)
             self._file_id2chunk[file_id] = cids
@@ -77,8 +76,8 @@ def find_dup_files(index1, index2):
         rate = dup_rate(f1, f2)
         path1 = index1._file_ids[f1]
         path2 = index2._file_ids[f2]
-        size1 = index1._files[path1]['size']
-        size2 = index2._files[path2]['size']
+        size1 = index1._files[path1]["size"]
+        size2 = index2._files[path2]["size"]
         dups.append((rate, size1, path1, size2, path2))
     return dups
 
@@ -141,15 +140,20 @@ def print_plain_report(dups, output_file):
     """
     for rate, size1, file1, size2, file2 in dups:
         print(
-            '{:>6.2f}%  {} ({}B)  {} ({}B)'.format(
-                rate * 100, file1, size1, file2, size2),
+            "{:>6.2f}%  {} ({}B)  {} ({}B)".format(
+                rate * 100,
+                file1,
+                size1,
+                file2,
+                size2,
+            ),
             file=output_file,
             flush=True,
         )
 
 
 def help():
-    print('''Find (partial content) duplicate files.
+    doc = """Find (partial content) duplicate files.
 
 Usage: {cmd} <chunksums_file1> <chunksums_file2>
 
@@ -158,7 +162,9 @@ Examples:
   $ chunksum dir1/ > chunksum.dir1
   $ chunksum dir2/ > chunksum.dir2
   $ {cmd} chunksum.dir1 chunksum.dir2
-'''.format(cmd=sys.argv[0]))
+"""
+
+    print(doc.format(cmd=sys.argv[0]))
 
 
 def main():
@@ -170,5 +176,5 @@ def main():
     print_plain_report(dups, sys.stdout)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
