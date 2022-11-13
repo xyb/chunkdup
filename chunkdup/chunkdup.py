@@ -6,6 +6,32 @@ from chunksum.parser import parse_chunksums
 
 
 class CheckSumIndex:
+    """
+    >>> import io
+    >>> from pprint import pprint
+    >>> chunksums = '''
+    ... sum1  /A/1  fck0sha2!a:10,b:10
+    ... sum2  /A/2  fck0sha2!c:10,d:10,e:10
+    ... sum3  /A/3  fck0sha2!f:10,g:10
+    ... sum4  /A/4  fck0sha2!h:10
+    ... '''
+    >>> file = io.StringIO(chunksums)
+    >>> sums = parse_chunksums(file)
+    >>> index = CheckSumIndex(sums)
+    >>> list(index.files)
+    ['/A/1', '/A/2', '/A/3', '/A/4']
+    >>> list(index.file_ids)
+    [0, 1, 2, 3]
+    >>> list(index.chunks)
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    >>> index.chunk2file_id
+    {'a': [0], 'b': [0], 'c': [1], 'd': [1], 'e': [1], 'f': [2], 'g': [2], 'h': [3]}
+    >>> index.file_id2chunk
+    {0: ['a', 'b'], 1: ['c', 'd', 'e'], 2: ['f', 'g'], 3: ['h']}
+    >>> index.chunk2size
+    {'a': 10, 'b': 10, 'c': 10, 'd': 10, 'e': 10, 'f': 10, 'g': 10, 'h': 10}
+    """
+
     def __init__(self, sums):
         self._files = {}  # file path -> file id and details
         self._file_ids = {}  # inverse: file id -> file path
@@ -41,11 +67,11 @@ class CheckSumIndex:
         return self._chunk2file_id.keys()
 
     @property
-    def chunk2fileid(self):
+    def chunk2file_id(self):
         return self._chunk2file_id
 
     @property
-    def fileid2chunk(self):
+    def file_id2chunk(self):
         return self._file_id2chunk
 
     @property
@@ -77,10 +103,10 @@ def diff_ratio(a, b, sizes1, sizes2):
 
 
 def find_dup_files(index1, index2):
-    chunks1 = index1.chunk2fileid
-    fileids1 = index1.fileid2chunk
-    chunks2 = index2.chunk2fileid
-    fileids2 = index2.fileid2chunk
+    chunks1 = index1.chunk2file_id
+    file_ids1 = index1.file_id2chunk
+    chunks2 = index2.chunk2file_id
+    file_ids2 = index2.file_id2chunk
 
     same_chunks = set(chunks1) & set(chunks2)
 
@@ -96,8 +122,8 @@ def find_dup_files(index1, index2):
 
     dups = []
     for f1, f2 in file_id_pairs:
-        ids1 = fileids1[f1]
-        ids2 = fileids2[f2]
+        ids1 = file_ids1[f1]
+        ids2 = file_ids2[f2]
         ratio = diff_ratio(ids1, ids2, index1.chunk2size, index2.chunk2size)
         path1 = index1._file_ids[f1]
         path2 = index2._file_ids[f2]
@@ -205,13 +231,31 @@ Examples:
 
 
 def main():
-    if len(sys.argv) != 3:
+    """
+    >>> sys.argv = ['chunkdup']
+    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    Find ...
+    Usage: ...
+    ...
+
+    >>> import tempfile
+    >>> f1 = tempfile.NamedTemporaryFile()
+    >>> _ = f1.write(b'sum1  /A/1  fck0sha2!a:10,b:10')
+    >>> f1.flush()
+    >>> f2 = tempfile.NamedTemporaryFile()
+    >>> _ = f2.write(b'sum2  /B/1  fck0sha2!c:10,b:10')
+    >>> f2.flush()
+    >>> sys.argv = ['chunkdup', f1.name, f2.name]
+    >>> main()
+     50.00%  /A/1 (20B)  /B/1 (20B)
+    """
+    if len(sys.argv) == 3:
+        path1, path2 = sys.argv[1:3]
+        dups = find_dup(open(path1), open(path2))
+        print_plain_report(dups, sys.stdout)
+    else:
         help()
-        sys.exit()
-    path1, path2 = sys.argv[1:3]
-    dups = find_dup(open(path1), open(path2))
-    print_plain_report(dups, sys.stdout)
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pragma: no cover
