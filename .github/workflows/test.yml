@@ -37,7 +37,16 @@ jobs:
       - name: run tests
         run: |
           source .venv/bin/activate
-          pytest --doctest-modules --last-failed --durations=3
+          make coverage
+
+      - name: Generate coverage report
+        run: |
+          coverage xml
+
+      - name: Send coverage report to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
 
   lint:
     name: pre-commit
