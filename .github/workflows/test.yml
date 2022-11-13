@@ -45,7 +45,7 @@ jobs:
           file: ./coverage.xml
 
       - name: Send coverage report to codeclimate
-        uses: paambaati/codeclimate-action@v3
+        uses: paambaati/codeclimate-action@v3.1.1
         env:
           CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
 
