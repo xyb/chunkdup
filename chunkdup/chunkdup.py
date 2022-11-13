@@ -93,9 +93,9 @@ def diff_ratio(a, b, sizes1, sizes2):
     for tag, i1, i2, _, _ in SequenceMatcher(a=a, b=b).get_opcodes():
         if tag != "equal":
             continue
-        for chunk in a[i1:i2]:
-            size = sizes1.get(chunk, 0) or sizes2.get(chunk, 0)
-            matches += size
+        matches += sum(
+            [sizes1.get(chunk, 0) or sizes2.get(chunk, 0) for chunk in a[i1:i2]],
+        )
     size1 = sum([sizes1.get(chunk) for chunk in a])
     size2 = sum([sizes2.get(chunk) for chunk in b])
     ratio = (2 * matches) / (size1 + size2)
