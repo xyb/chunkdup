@@ -22,7 +22,7 @@ python-versions = ">=3.6.1"
 
 [[package]]
 name = "chunksum"
-version = "0.3.0"
+version = "0.4.0"
 description = "Print FastCDC rolling hash chunks and checksums."
 category = "main"
 optional = false
@@ -419,7 +419,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "68b2e058498ec1067e6a5e6c1b166b120919bb3b273b6c4dcb9b01f6d4518740"
+content-hash = "23b5038cee217a6172208406c2dac4b34adabdb62a491838420f3c6f0cca2713"
 
 [metadata.files]
 attrs = [
@@ -431,8 +431,8 @@ cfgv = [
     {file = "cfgv-3.3.1.tar.gz", hash = "sha256:f5a830efb9ce7a445376bb66ec94c638a9787422f96264c98edc6bdeed8ab736"},
 ]
 chunksum = [
-    {file = "chunksum-0.3.0-py3-none-any.whl", hash = "sha256:43888ddf521862408ef1eaf96860f1a27aee36deea1b800c1f02e19e4adf801b"},
-    {file = "chunksum-0.3.0.tar.gz", hash = "sha256:075ed2f3ac4939ea5d45369dc94705ba6f127e6c296ee4ff3b3ee6506558528d"},
+    {file = "chunksum-0.4.0-py3-none-any.whl", hash = "sha256:3630519253c0e77d0806c4841e820f1ec07e126827b8fff2ec2bd3486595d4fd"},
+    {file = "chunksum-0.4.0.tar.gz", hash = "sha256:987542d0143d563ae3fc93451f53257417d5d4baa78595ddb288cffa1462e84b"},
 ]
 click = [
     {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
