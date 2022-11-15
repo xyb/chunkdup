@@ -222,9 +222,9 @@ Usage: {cmd} <chunksums_file1> <chunksums_file2>
 
 Examples:
 
-  $ chunksum dir1/ > chunksum.dir1
-  $ chunksum dir2/ > chunksum.dir2
-  $ {cmd} chunksum.dir1 chunksum.dir2
+  $ chunksum dir1/ > chunksums.dir1
+  $ chunksum dir2/ > chunksums.dir2
+  $ {cmd} chunksums.dir1 chunksums.dir2
 """
 
     print(doc.format(cmd=sys.argv[0]))
