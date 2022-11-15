@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import signal
 import sys
 from difflib import SequenceMatcher
 
@@ -222,8 +223,8 @@ Usage: {cmd} <chunksums_file1> <chunksums_file2>
 
 Examples:
 
-  $ chunksum dir1/ > chunksums.dir1
-  $ chunksum dir2/ > chunksums.dir2
+  $ chunksum dir1/ -f chunksums.dir1
+  $ chunksum dir2/ -f chunksums.dir2
   $ {cmd} chunksums.dir1 chunksums.dir2
 """
 
@@ -249,6 +250,11 @@ def main():
     >>> main()
      50.00%  /A/1 (20B)  /B/1 (20B)
     """
+
+    # Don't turn these signal into exceptions, just die.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
     if len(sys.argv) == 3:
         path1, path2 = sys.argv[1:3]
         dups = find_dup(open(path1), open(path2))
