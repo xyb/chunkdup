@@ -1,6 +1,6 @@
 # chunkdup
 
-Find (partial content) duplicate files with [chunksum](https://github.com/xyb/chunksum) outputs.
+Find (partial content) duplicate files using [chunksum](https://github.com/xyb/chunksum) outputs.
 
 [![test](https://github.com/xyb/chunkdup/actions/workflows/test.yml/badge.svg)](https://github.com/xyb/chunkdup/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/xyb/chunkdup/branch/main/graph/badge.svg?token=TVFUKMLFMX)](https://codecov.io/gh/xyb/chunkdup)
