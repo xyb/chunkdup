@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "chunkdup"
-version = "0.2.2"
+version = "0.2.3"
 description = "Find (partial content) duplicate files."
 authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
