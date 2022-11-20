@@ -2,9 +2,7 @@ import sys
 from difflib import SequenceMatcher
 from math import ceil
 
-from chunksum.parser import parse_chunksums
-
-from .chunkdup import CheckSumIndex
+from .index import get_index
 
 
 GREY = "\033[100m"
@@ -14,22 +12,12 @@ YELLOW = "\033[103m"
 END = "\033[0m"
 
 
-def get_info(chunksums_file1, chunksums_file2, path1, path2):
-    sums1 = parse_chunksums(chunksums_file1)
-    sums2 = parse_chunksums(chunksums_file2)
-    index1 = CheckSumIndex(sums1)
-    index2 = CheckSumIndex(sums2)
-
-    id1 = index1._files.get(path1).get("id")
-    id2 = index2._files.get(path2).get("id")
-
-    chunks1 = index1.file_id2chunk[id1]
-    chunks2 = index2.file_id2chunk[id2]
-
-    sizes1 = [index1.chunk2size.get(id) for id in chunks1]
-    sizes2 = [index2.chunk2size.get(id) for id in chunks2]
-
-    return (chunks1, sizes1), (chunks2, sizes2)
+def get_info(chunksums_file, path):
+    index = get_index(chunksums_file)
+    id = index._files.get(path).get("id")
+    chunks = index.file_id2chunk[id]
+    sizes = [index.chunk2size.get(id) for id in chunks]
+    return chunks, sizes
 
 
 def find_diff(chunks1, sizes1, chunks2, sizes2):
@@ -76,37 +64,26 @@ def fill_line(bar_size, total, diff):
     return line1, line2
 
 
-def print_diff(
-    chunksums_file1,
-    chunksums_file2,
-    path1,
-    path2,
+def get_bar(chunksums_file1, chunksums_file2, path1, path2, bar_size=40):
+    chunks1, sizes1 = get_info(chunksums_file1, path1)
+    chunks2, sizes2 = get_info(chunksums_file2, path2)
+
+    total, diff = find_diff(chunks1, sizes1, chunks2, sizes2)
+    filesize1 = sum(sizes1)
+    filesize2 = sum(sizes2)
+    line1, line2 = fill_line(bar_size, total, diff)
+    return line1, line2, filesize1, filesize2
+
+
+def print_2bar(
+    line1,
+    line2,
+    filesize1,
+    filesize2,
+    output,
     bar_size=40,
     color=True,
 ):
-    """
-    >>> import tempfile
-    >>> f1 = tempfile.NamedTemporaryFile()
-    >>> _ = f1.write(b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n')
-    >>> f1.flush()
-    >>> f2 = tempfile.NamedTemporaryFile()
-    >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:5,r:5,n:5,s:5,z:5\\n')
-    >>> f2.flush()
-    >>> print_diff(open(f1.name), open(f2.name), './a', './b', color=False)
-            45  --------===============    ====    ====----
-            45          ===============++++====++++====++++
-    """
-    (chunks1, sizes1), (chunks2, sizes2) = get_info(
-        chunksums_file1,
-        chunksums_file2,
-        path1,
-        path2,
-    )
-
-    total, diff = find_diff(chunks1, sizes1, chunks2, sizes2)
-
-    line1, line2 = fill_line(bar_size, total, diff)
-
     def colorful(line):
         colors = {
             "=": GREY,
@@ -120,10 +97,54 @@ def print_diff(
         line1 = colorful(line1)
         line2 = colorful(line2)
 
-    filesize1 = sum(sizes1)
-    filesize2 = sum(sizes2)
-    print("{:>10d}  {}".format(filesize1, "".join(line1)))
-    print("{:>10d}  {}".format(filesize2, "".join(line2)))
+    for size, line in ((filesize1, line1), (filesize2, line2)):
+        print(
+            "{:>10}  {}".format(size, "".join(line)),
+            file=output,
+            flush=True,
+        )
+
+
+def print_diff(
+    chunksums_file1,
+    chunksums_file2,
+    path1,
+    path2,
+    output=None,
+    bar_size=40,
+    color=True,
+):
+    """
+    >>> import sys
+    >>> import tempfile
+    >>> f1 = tempfile.NamedTemporaryFile()
+    >>> _ = f1.write(b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n')
+    >>> f1.flush()
+    >>> f2 = tempfile.NamedTemporaryFile()
+    >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:5,r:5,n:5,s:5,z:5\\n')
+    >>> f2.flush()
+    >>> print_diff(open(f1.name), open(f2.name), './a', './b', color=False)
+            45  --------===============    ====    ====----
+            45          ===============++++====++++====++++
+    """
+
+    line1, line2, filesize1, filesize2 = get_bar(
+        chunksums_file1,
+        chunksums_file2,
+        path1,
+        path2,
+    )
+    if not output:
+        output = sys.stdout
+    print_2bar(
+        line1,
+        line2,
+        filesize1,
+        filesize2,
+        output=output,
+        bar_size=bar_size,
+        color=color,
+    )
 
 
 def main():
