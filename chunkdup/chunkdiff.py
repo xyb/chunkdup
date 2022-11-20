@@ -36,19 +36,17 @@ def find_diff(chunks1, sizes1, chunks2, sizes2):
     s = SequenceMatcher(a=chunks1, b=chunks2)
     diff = []
     total = 0
+    tag_map = {
+        "equal": ["=", "="],
+        "replace": ["-", "+"],
+        "delete": ["-", " "],
+        "insert": [" ", "+"],
+    }
     for tag, i1, i2, j1, j2 in s.get_opcodes():
         size1 = sum([s for s in sizes1[i1:i2]])
         size2 = sum([s for s in sizes2[j1:j2]])
-        size = max(size1, size2)
-        total += size
-        if tag == "equal":
-            diff.append(["=", "=", size, size])
-        elif tag == "replace":
-            diff.append(["-", "+", size1, size2])
-        elif tag == "delete":
-            diff.append(["-", " ", size, 0])
-        else:  # tag == 'insert'
-            diff.append([" ", "+", 0, size2])
+        total += max(size1, size2)
+        diff.append(tag_map[tag] + [size1, size2])
 
     return total, diff
 
