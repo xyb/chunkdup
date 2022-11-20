@@ -18,6 +18,7 @@ classifiers = [
 
 [tool.poetry.scripts]
 chunkdup = 'chunkdup.chunkdup:main'
+chunkdiff = 'chunkdup.chunkdiff:main'
 
 [tool.poetry.dependencies]
 python = "^3.7"
