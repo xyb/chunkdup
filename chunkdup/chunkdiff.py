@@ -1,5 +1,6 @@
 import sys
 from difflib import SequenceMatcher
+from itertools import groupby
 from math import ceil
 
 from .index import get_index
@@ -64,7 +65,7 @@ def fill_line(bar_size, total, diff):
     return line1, line2
 
 
-def get_bar(chunksums_file1, chunksums_file2, path1, path2, bar_size=40):
+def get_bar_layer(chunksums_file1, chunksums_file2, path1, path2, bar_size=40):
     chunks1, sizes1 = get_info(chunksums_file1, path1)
     chunks2, sizes2 = get_info(chunksums_file2, path2)
 
@@ -75,15 +76,23 @@ def get_bar(chunksums_file1, chunksums_file2, path1, path2, bar_size=40):
     return line1, line2, filesize1, filesize2
 
 
-def print_2bar(
+def print_2lines_bar(
     line1,
     line2,
     filesize1,
     filesize2,
-    output,
+    output=None,
     bar_size=40,
     color=True,
 ):
+    """
+    >>> line1 = ['-----', '==', '-----', '===']
+    >>> line2 = ['++', '   ', '==', '+', '    ', '===']
+    >>> print_2lines_bar(line1, line2, 100, 70, color=False)
+           100  -----==-----===
+            70  ++   ==+    ===
+    """
+
     def colorful(line):
         colors = {
             "=": GREY,
@@ -100,9 +109,49 @@ def print_2bar(
     for size, line in ((filesize1, line1), (filesize2, line2)):
         print(
             "{:>10}  {}".format(size, "".join(line)),
-            file=output,
+            file=output or sys.stdout,
             flush=True,
         )
+
+
+def print_1line_bar(
+    line1,
+    line2,
+    filesize1,
+    filesize2,
+    output=None,
+    bar_size=40,
+    color=True,
+):
+    """
+    >>> line1 = ['-----', '==', '     ', '===']
+    >>> line2 = ['++', '   ', '==', '+++++', '===']
+    >>> print_1line_bar(line1, line2, 100, 70, color=False)
+    ██▀▀▀▒▒▄▄▄▄▄▒▒▒
+    """
+
+    def colorful(line):
+        colors = {
+            "=": GREY,
+            "-": RED,
+            "+": GREEN,
+            " ": YELLOW,
+        }
+        return [colors[s[0]] + s + END for s in line]
+
+    pairs = list("".join(x) for x in zip("".join(line1), "".join(line2)))
+    chars = {
+        "==": "▒",
+        "-+": "█",
+        "- ": "▀",
+        " +": "▄",
+    }
+    bar = []
+    for key, group in groupby(pairs):
+        width = len(list(group))
+        bar.append(chars.get(key, " ") * width)
+
+    print("".join(bar), file=output, flush=True)
 
 
 def print_diff(
@@ -113,6 +162,7 @@ def print_diff(
     output=None,
     bar_size=40,
     color=True,
+    oneline=True,
 ):
     """
     >>> import sys
@@ -123,25 +173,31 @@ def print_diff(
     >>> f2 = tempfile.NamedTemporaryFile()
     >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:5,r:5,n:5,s:5,z:5\\n')
     >>> f2.flush()
-    >>> print_diff(open(f1.name), open(f2.name), './a', './b', color=False)
+    >>> a, b = open(f1.name), open(f2.name)
+    >>> print_diff(a, b, './a', './b', color=False)
+    ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▄▄▄▄▒▒▒▒▄▄▄▄▒▒▒▒████
+    >>> a, b = open(f1.name), open(f2.name)
+    >>> print_diff(a, b, './a', './b', color=False, oneline=False)
             45  --------===============    ====    ====----
             45          ===============++++====++++====++++
     """
 
-    line1, line2, filesize1, filesize2 = get_bar(
+    line1, line2, filesize1, filesize2 = get_bar_layer(
         chunksums_file1,
         chunksums_file2,
         path1,
         path2,
     )
-    if not output:
-        output = sys.stdout
-    print_2bar(
+    if oneline:
+        print_func = print_1line_bar
+    else:
+        print_func = print_2lines_bar
+    print_func(
         line1,
         line2,
         filesize1,
         filesize2,
-        output=output,
+        output=output or sys.stdout,
         bar_size=bar_size,
         color=color,
     )
@@ -158,8 +214,7 @@ def main():
     >>> f2.flush()
     >>> sys.argv = ['chunkdiff', f1.name, f2.name, './a', './b']
     >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-                45  ...
-                45  ...
+    ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
     """
     if len(sys.argv) == 5:
         sums_path1, sums_path2, path1, path2 = sys.argv[1:5]
