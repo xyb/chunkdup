@@ -6,10 +6,14 @@ from math import ceil
 from .index import get_index
 
 
-GREY = "\033[100m"
-RED = "\033[101m"
-GREEN = "\033[102m"
-YELLOW = "\033[103m"
+GREY = "\033[90m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+GREY_BG = "\033[100m"
+RED_BG = "\033[101m"
+GREEN_BG = "\033[102m"
+YELLOW_BG = "\033[103m"
 END = "\033[0m"
 
 
@@ -91,14 +95,18 @@ def print_2lines_bar(
     >>> print_2lines_bar(line1, line2, 100, 70, color=False)
            100  -----==-----===
             70  ++   ==+    ===
+    >>> print_2lines_bar(line1, line2, 100, 70)
+    ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+           100  ...
+            70  ...
     """
 
     def colorful(line):
         colors = {
-            "=": GREY,
-            "-": RED,
-            "+": GREEN,
-            " ": YELLOW,
+            "=": GREY_BG,
+            "-": RED_BG,
+            "+": GREEN_BG,
+            " ": YELLOW_BG,
         }
         return [colors[s[0]] + s + END for s in line]
 
@@ -127,17 +135,11 @@ def print_1line_bar(
     >>> line1 = ['-----', '==', '     ', '===']
     >>> line2 = ['++', '   ', '==', '+++++', '===']
     >>> print_1line_bar(line1, line2, 100, 70, color=False)
-    ██▀▀▀▒▒▄▄▄▄▄▒▒▒
+    ▀100  ▄70  ██▀▀▀▒▒▄▄▄▄▄▒▒▒
+    >>> print_1line_bar(line1, line2, 100, 70, color=True)
+    ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ▀100  ▄70  ...
     """
-
-    def colorful(line):
-        colors = {
-            "=": GREY,
-            "-": RED,
-            "+": GREEN,
-            " ": YELLOW,
-        }
-        return [colors[s[0]] + s + END for s in line]
 
     pairs = list("".join(x) for x in zip("".join(line1), "".join(line2)))
     chars = {
@@ -146,12 +148,31 @@ def print_1line_bar(
         "- ": "▀",
         " +": "▄",
     }
+    colors = {
+        "==": ["▒", GREY + GREY_BG],  # fg: grey, bg: grey
+        "-+": ["▀", RED + GREEN_BG],  # fg/top half: red, bg/bottom half: green
+        "- ": ["▀", RED + YELLOW_BG],  # fg: red, bg: yellow
+        " +": ["▀", YELLOW + GREEN_BG],  # fg: yellow, bg: green
+    }
     bar = []
     for key, group in groupby(pairs):
         width = len(list(group))
-        bar.append(chars.get(key, " ") * width)
+        if color:
+            char, color_ = colors[key]
+            item = color_ + char * width + END
+        else:
+            item = chars[key] * width
+        bar.append(item)
 
-    print("".join(bar), file=output, flush=True)
+    print(
+        "▀{}  ▄{}  {}".format(
+            filesize1,
+            filesize2,
+            "".join(bar),
+            file=output,
+            flush=True,
+        ),
+    )
 
 
 def print_diff(
@@ -175,7 +196,7 @@ def print_diff(
     >>> f2.flush()
     >>> a, b = open(f1.name), open(f2.name)
     >>> print_diff(a, b, './a', './b', color=False)
-    ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▄▄▄▄▒▒▒▒▄▄▄▄▒▒▒▒████
+    ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▄▄▄▄▒▒▒▒▄▄▄▄▒▒▒▒████
     >>> a, b = open(f1.name), open(f2.name)
     >>> print_diff(a, b, './a', './b', color=False, oneline=False)
             45  --------===============    ====    ====----
@@ -212,13 +233,22 @@ def main():
     >>> f2 = tempfile.NamedTemporaryFile()
     >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:10,x:5,s:5,y:5\\n')
     >>> f2.flush()
-    >>> sys.argv = ['chunkdiff', f1.name, f2.name, './a', './b']
+    >>> sys.argv = ['chunkdiff', f1.name, f2.name, './a', './b', 'nocolor']
     >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
+    ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
     """
-    if len(sys.argv) == 5:
+    if len(sys.argv) >= 5:
         sums_path1, sums_path2, path1, path2 = sys.argv[1:5]
-        print_diff(open(sums_path1), open(sums_path2), path1, path2)
+        color = True
+        if len(sys.argv) >= 6:
+            color = sys.argv[5] != "nocolor"
+        print_diff(
+            open(sums_path1),
+            open(sums_path2),
+            path1,
+            path2,
+            color=color,
+        )
     else:
         pass
 
