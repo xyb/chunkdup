@@ -51,9 +51,11 @@ def find_dup_files(index1, index2):
     for f1, f2 in file_id_pairs:
         ids1 = file_ids1[f1]
         ids2 = file_ids2[f2]
-        ratio = diff_ratio(ids1, ids2, index1.chunk2size, index2.chunk2size)
         path1 = index1._file_ids[f1]
         path2 = index2._file_ids[f2]
+        ratio = diff_ratio(ids1, ids2, index1.chunk2size, index2.chunk2size)
+        if path1 == path2 and ratio == 1.0:
+            continue
         size1 = index1._files[path1]["size"]
         size2 = index2._files[path2]["size"]
         dups.append((ratio, size1, path1, size2, path2))
@@ -83,11 +85,20 @@ def find_dup(chunksum_file1, chunksum_file2):
      (0.6666666666666666, 30, '/A/2', 30, '/B/2'),
      (0.5, 20, '/A/3', 20, '/B/3'),
      (0.4, 20, '/A/3', 30, '/B/2')]
-    >>> chunksum_repeat = '''sum  filename  fck0sha2!a:1,a:1,a:1,b:2'''
+    >>> chunksum_repeat = '''
+    ... sum  a  fck0sha2!a:1,a:1,a:1,b:2
+    ... sum  b  fck0sha2!a:1,b:2
+    ... sum  c  fck0sha2!a:1,a:1,a:1,b:2
+    ... '''
     >>> file1 = io.StringIO(chunksum_repeat)
     >>> file2 = io.StringIO(chunksum_repeat)
     >>> pprint(find_dup(file1, file2))
-    [(1.0, 5, 'filename', 5, 'filename')]
+    [(1.0, 5, 'c', 5, 'a'),
+     (1.0, 5, 'a', 5, 'c'),
+     (0.75, 5, 'c', 3, 'b'),
+     (0.75, 5, 'a', 3, 'b'),
+     (0.75, 3, 'b', 5, 'c'),
+     (0.75, 3, 'b', 5, 'a')]
     """
     index1 = get_index(chunksum_file1)
     index2 = get_index(chunksum_file2)
@@ -119,12 +130,21 @@ def print_plain_report(dups, output_file):
      50.00%  /A/3 (20B)  /B/3 (20B)
      40.00%  /A/3 (20B)  /B/2 (30B)
 
-    >>> chunksum_repeat = '''sum  filename  fck0sha2!a:1,a:1,a:1,b:2'''
+    >>> chunksum_repeat = '''
+    ... sum  a  fck0sha2!a:1,a:1,a:1,b:2
+    ... sum  b  fck0sha2!a:1,b:2
+    ... sum  c  fck0sha2!a:1,a:1,a:1,b:2
+    ... '''
     >>> file1 = io.StringIO(chunksum_repeat)
     >>> file2 = io.StringIO(chunksum_repeat)
     >>> dups = find_dup(file1, file2)
     >>> print_plain_report(dups, sys.stdout)
-    100.00%  filename (5B)  filename (5B)
+    100.00%  c (5B)  a (5B)
+    100.00%  a (5B)  c (5B)
+     75.00%  c (5B)  b (3B)
+     75.00%  a (5B)  b (3B)
+     75.00%  b (3B)  c (5B)
+     75.00%  b (3B)  a (5B)
     """
     for ratio, size1, file1, size2, file2 in dups:
         print(
