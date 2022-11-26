@@ -1,3 +1,4 @@
+import argparse
 import sys
 from difflib import SequenceMatcher
 from itertools import groupby
@@ -215,6 +216,7 @@ def print_diff(
         chunksums_file2,
         path1,
         path2,
+        bar_size=bar_size,
     )
     if oneline:
         print_func = print_1line_bar
@@ -231,8 +233,29 @@ def print_diff(
     )
 
 
+command_desc = "Show the difference of two files."
+command_long_desc = """
+Examples:
+
+  $ chunksum dir1/ -f chunksums.dir1
+  $ chunksum dir2/ -f chunksums.dir2
+  $ %(prog)s chunksums.dir1 chunksums.dir2 dir1/file1 dir2/file2
+
+  $ %(prog)s chunksums chunksums ./file1 ./file2
+"""
+
+
 def main():
     """
+    >>> sys.argv = ['chunkdiff']
+    >>> try:
+    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except:
+    ...     pass
+    usage: chunkdiff ...
+    Show the difference ...
+    ...
+
     >>> import tempfile
     >>> f1 = tempfile.NamedTemporaryFile()
     >>> _ = f1.write(b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n')
@@ -240,32 +263,76 @@ def main():
     >>> f2 = tempfile.NamedTemporaryFile()
     >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:10,x:5,s:5,y:5\\n')
     >>> f2.flush()
-    >>> sys.argv = ['chunkdiff', f1.name, f2.name, './a', './b', 'nocolor']
-    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    >>> s1, s2 = f1.name, f2.name
+    >>> sys.argv = ['chunkdiff', s1, s2, './a', './b', '--nocolor']
+    >>> main()
     ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
+    >>> sys.argv = ['chunkdiff', s1, s2, './a', './b', '-n', '-s', '10']
+    >>> main()
+    ▀45  ▄45  ▀▀▒▒▒▒█▄▄▒█
+    >>> sys.argv = ['chunkdiff', s1, s2, './a', './b', '-n', '-b', 'twolines']
+    >>> main()
+            45  --------===============----       ====----
+            45          ===============+++++++++++====++++
 
     >>> sys.argv = ['chunkdiff', f1.name, f2.name, './bad', './beef']
-    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    >>> try:
+    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except:
+    ...     pass
     file path not found: ./bad
     """
-    if len(sys.argv) >= 5:
-        sums_path1, sums_path2, path1, path2 = sys.argv[1:5]
-        color = True
-        if len(sys.argv) >= 6:
-            color = sys.argv[5] != "nocolor"
+    parser = argparse.ArgumentParser(
+        description=command_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=command_long_desc,
+    )
+    parser.add_argument(
+        "-b",
+        "--bar",
+        default="oneline",
+        help="the style of bar. default: %(default)s",
+    )
+    parser.add_argument(
+        "-s",
+        "--barsize",
+        default=40,
+        type=int,
+        help="the size of bar. default: %(default)s",
+    )
+    parser.add_argument(
+        "-n",
+        "--nocolor",
+        action="store_true",
+        help="do not colorize output. default: False",
+    )
 
-        try:
-            print_diff(
-                open(sums_path1),
-                open(sums_path2),
-                path1,
-                path2,
-                color=color,
-            )
-        except FileNotExists as e:
-            print(e)
-    else:
-        pass
+    parser.add_argument("chunksums1", nargs="?", help="path to chunksums")
+    parser.add_argument("chunksums2", nargs="?", help="path to chunksums")
+    parser.add_argument("file1", nargs="?", help="path to chunksums")
+    parser.add_argument("file2", nargs="?", help="path to chunksums")
+    args = parser.parse_args()
+
+    if not (args.chunksums1 and args.chunksums2 and args.file1 and args.file2):
+        parser.print_help()
+        sys.exit()
+
+    sums_path1, sums_path2, path1, path2 = sys.argv[1:5]
+    color = not args.nocolor
+
+    try:
+        print_diff(
+            open(args.chunksums1),
+            open(args.chunksums2),
+            args.file1,
+            args.file2,
+            bar_size=args.barsize,
+            color=color,
+            oneline=args.bar == "oneline",
+        )
+    except FileNotExists as e:
+        print(e)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
