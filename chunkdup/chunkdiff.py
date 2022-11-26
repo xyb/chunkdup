@@ -52,8 +52,8 @@ def find_diff(chunks1, sizes1, chunks2, sizes2):
     return total, diff
 
 
-def fill_line(bar_size, total, diff):
-    zoom = bar_size / total
+def fill_line(bar_width, total, diff):
+    zoom = bar_width / total
 
     def char_bar(char, size, line):
         width = ceil(size * zoom)
@@ -77,14 +77,14 @@ def fill_line(bar_size, total, diff):
     return line1, line2
 
 
-def get_bar_layer(chunksums_file1, chunksums_file2, path1, path2, bar_size=40):
+def get_bar_layer(chunksums_file1, chunksums_file2, path1, path2, bar_width=40):
     chunks1, sizes1 = get_info(chunksums_file1, path1)
     chunks2, sizes2 = get_info(chunksums_file2, path2)
 
     total, diff = find_diff(chunks1, sizes1, chunks2, sizes2)
     filesize1 = sum(sizes1)
     filesize2 = sum(sizes2)
-    line1, line2 = fill_line(bar_size, total, diff)
+    line1, line2 = fill_line(bar_width, total, diff)
     return line1, line2, filesize1, filesize2
 
 
@@ -94,7 +94,7 @@ def print_2lines_bar(
     filesize1,
     filesize2,
     output=None,
-    bar_size=40,
+    bar_width=40,
     color=True,
 ):
     """
@@ -136,7 +136,7 @@ def print_1line_bar(
     filesize1,
     filesize2,
     output=None,
-    bar_size=40,
+    bar_width=40,
     color=True,
 ):
     """
@@ -189,7 +189,7 @@ def print_diff(
     path1,
     path2,
     output=None,
-    bar_size=40,
+    bar_width=40,
     color=True,
     oneline=True,
 ):
@@ -216,7 +216,7 @@ def print_diff(
         chunksums_file2,
         path1,
         path2,
-        bar_size=bar_size,
+        bar_width=bar_width,
     )
     if oneline:
         print_func = print_1line_bar
@@ -228,7 +228,7 @@ def print_diff(
         filesize1,
         filesize2,
         output=output or sys.stdout,
-        bar_size=bar_size,
+        bar_width=bar_width,
         color=color,
     )
 
@@ -258,25 +258,25 @@ def main():
     ...
 
     >>> import tempfile
-    >>> f1 = tempfile.NamedTemporaryFile()
-    >>> _ = f1.write(b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n')
-    >>> f1.flush()
-    >>> f2 = tempfile.NamedTemporaryFile()
-    >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:10,x:5,s:5,y:5\\n')
-    >>> f2.flush()
-    >>> s1, s2 = f1.name, f2.name
-    >>> sys.argv = ['chunkdiff', s1, s2, './a', './b', '--nocolor']
+    >>> f = tempfile.NamedTemporaryFile()
+    >>> _ = f.write(
+    ... b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n'
+    ... b'sum2  ./b  fck0sha2!b:10,c:10,m:10,x:5,s:5,y:5\\n'
+    ... )
+    >>> f.flush()
+    >>> s = f.name
+    >>> sys.argv = ['chunkdiff', '-s', s, '-s', s, './a', './b', '--nocolor']
     >>> main()
     ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
-    >>> sys.argv = ['chunkdiff', s1, s2, './a', './b', '-n', '-s', '10']
+    >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-w', '10']
     >>> main()
     ▀45  ▄45  ▀▀▒▒▒▒█▄▄▒█
-    >>> sys.argv = ['chunkdiff', s1, s2, './a', './b', '-n', '-b', 'twolines']
+    >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-b', 'twolines']
     >>> main()
             45  --------===============----       ====----
             45          ===============+++++++++++====++++
 
-    >>> sys.argv = ['chunkdiff', f1.name, f2.name, './bad', './beef']
+    >>> sys.argv = ['chunkdiff', '-s', s, './bad', './beef']
     >>> try:
     ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     ... except:
@@ -295,11 +295,11 @@ def main():
         help="the style of bar. default: %(default)s",
     )
     parser.add_argument(
-        "-s",
-        "--barsize",
+        "-w",
+        "--barwidth",
         default=40,
         type=int,
-        help="the size of bar. default: %(default)s",
+        help="the width of bar. default: %(default)s",
     )
     parser.add_argument(
         "-n",
@@ -307,29 +307,36 @@ def main():
         action="store_true",
         help="do not colorize output. default: False",
     )
-
-    parser.add_argument("chunksums1", nargs="?", help="path to chunksums")
-    parser.add_argument("chunksums2", nargs="?", help="path to chunksums")
-    parser.add_argument("file1", nargs="?", help="path to chunksums")
-    parser.add_argument("file2", nargs="?", help="path to chunksums")
+    parser.add_argument(
+        "-s",
+        "--chunksums",
+        action="append",
+        help="path to chunksums",
+    )
+    parser.add_argument("file1", nargs="?", help="path to file")
+    parser.add_argument("file2", nargs="?", help="path to file")
     args = parser.parse_args()
 
-    if not (args.chunksums1 and args.chunksums2 and args.file1 and args.file2):
+    if not (args.chunksums and args.file1 and args.file2):
         parser.print_help()
         sys.exit()
 
-    sums_path1, sums_path2, path1, path2 = sys.argv[1:5]
+    chunksums1 = chunksums2 = args.chunksums[0]
+    if len(args.chunksums) > 1:
+        chunksums2 = args.chunksums[1]
+
     color = not args.nocolor
+    oneline = args.bar == "oneline"
 
     try:
         print_diff(
-            open(args.chunksums1),
-            open(args.chunksums2),
+            open(chunksums1),
+            open(chunksums2),
             args.file1,
             args.file2,
-            bar_size=args.barsize,
+            bar_width=args.barwidth,
             color=color,
-            oneline=args.bar == "oneline",
+            oneline=oneline,
         )
     except FileNotExists as e:
         print(e)
