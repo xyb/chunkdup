@@ -17,9 +17,16 @@ YELLOW_BG = "\033[103m"
 END = "\033[0m"
 
 
+class FileNotExists(Exception):
+    pass
+
+
 def get_info(chunksums_file, path):
     index = get_index(chunksums_file)
-    id = index._files.get(path).get("id")
+    try:
+        id = index._files.get(path).get("id")
+    except AttributeError:
+        raise FileNotExists(f"file path not found: {path}")
     chunks = index.file_id2chunk[id]
     sizes = [index.chunk2size.get(id) for id in chunks]
     return chunks, sizes
@@ -236,19 +243,30 @@ def main():
     >>> sys.argv = ['chunkdiff', f1.name, f2.name, './a', './b', 'nocolor']
     >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
+
+    >>> sys.argv = ['chunkdiff', f1.name, f2.name, './bad', './beef']
+    >>> try:
+    ...   main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except FileNotExists:
+    ...  pass
+    file path not found: ./bad
     """
     if len(sys.argv) >= 5:
         sums_path1, sums_path2, path1, path2 = sys.argv[1:5]
         color = True
         if len(sys.argv) >= 6:
             color = sys.argv[5] != "nocolor"
-        print_diff(
-            open(sums_path1),
-            open(sums_path2),
-            path1,
-            path2,
-            color=color,
-        )
+
+        try:
+            print_diff(
+                open(sums_path1),
+                open(sums_path2),
+                path1,
+                path2,
+                color=color,
+            )
+        except FileNotExists as e:
+            print(e)
     else:
         pass
 
