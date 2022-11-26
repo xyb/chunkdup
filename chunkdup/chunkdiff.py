@@ -4,7 +4,7 @@ from difflib import SequenceMatcher
 from itertools import groupby
 from math import ceil
 
-from .index import get_index
+from .sums import Chunksums
 
 
 GREY = "\033[90m"
@@ -16,21 +16,6 @@ RED_BG = "\033[101m"
 GREEN_BG = "\033[102m"
 YELLOW_BG = "\033[103m"
 END = "\033[0m"
-
-
-class FileNotExists(Exception):
-    pass
-
-
-def get_info(chunksums_file, path):
-    index = get_index(chunksums_file)
-    try:
-        id = index._files.get(path).get("id")
-    except AttributeError:
-        raise FileNotExists(f"file path not found: {path}")
-    chunks = index.file_id2chunk[id]
-    sizes = [index.chunk2size.get(id) for id in chunks]
-    return chunks, sizes
 
 
 def find_diff(chunks1, sizes1, chunks2, sizes2):
@@ -77,15 +62,13 @@ def fill_line(bar_width, total, diff):
     return line1, line2
 
 
-def get_bar_layer(chunksums_file1, chunksums_file2, path1, path2, bar_width=40):
-    chunks1, sizes1 = get_info(chunksums_file1, path1)
-    chunks2, sizes2 = get_info(chunksums_file2, path2)
+def get_bar_layer(chunksums1, chunksums2, path1, path2, bar_width=40):
+    f1 = chunksums1.get_file(path1)
+    f2 = chunksums2.get_file(path2)
 
-    total, diff = find_diff(chunks1, sizes1, chunks2, sizes2)
-    filesize1 = sum(sizes1)
-    filesize2 = sum(sizes2)
+    total, diff = find_diff(f1.hashes, f1.sizes, f2.hashes, f2.sizes)
     line1, line2 = fill_line(bar_width, total, diff)
-    return line1, line2, filesize1, filesize2
+    return line1, line2, f1.size, f2.size
 
 
 def print_2lines_bar(
@@ -184,8 +167,8 @@ def print_1line_bar(
 
 
 def print_diff(
-    chunksums_file1,
-    chunksums_file2,
+    chunksums1,
+    chunksums2,
     path1,
     path2,
     output=None,
@@ -197,23 +180,23 @@ def print_diff(
     >>> import sys
     >>> import tempfile
     >>> f1 = tempfile.NamedTemporaryFile()
-    >>> _ = f1.write(b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n')
+    >>> _ = f1.write(b'bee1  ./a  fck0sha2!aa:10,bb:10,cc:5,dd:5,f1:5\\n')
     >>> f1.flush()
     >>> f2 = tempfile.NamedTemporaryFile()
-    >>> _ = f2.write(b'sum2  ./b  fck0sha2!b:10,c:10,m:5,r:5,n:5,s:5,z:5\\n')
+    >>> _ = f2.write(b'bee2  ./b  fck0sha2!bb:10,f2:5,cc:5,f3:5,dd:5,f4:5\\n')
     >>> f2.flush()
-    >>> a, b = open(f1.name), open(f2.name)
+    >>> a = Chunksums.parse(open(f1.name))
+    >>> b = Chunksums.parse(open(f2.name))
     >>> print_diff(a, b, './a', './b', color=False)
-    ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▄▄▄▄▒▒▒▒▄▄▄▄▒▒▒▒████
-    >>> a, b = open(f1.name), open(f2.name)
+    ▀35  ▄35  ▀▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▄▄▄▄▄▒▒▒▒▒▄▄▄▄▄▒▒▒▒▒█████
     >>> print_diff(a, b, './a', './b', color=False, oneline=False)
-            45  --------===============    ====    ====----
-            45          ===============++++====++++====++++
+            35  ---------=========     =====     =====-----
+            35           =========+++++=====+++++=====+++++
     """
 
     line1, line2, filesize1, filesize2 = get_bar_layer(
-        chunksums_file1,
-        chunksums_file2,
+        chunksums1,
+        chunksums2,
         path1,
         path2,
         bar_width=bar_width,
@@ -260,8 +243,8 @@ def main():
     >>> import tempfile
     >>> f = tempfile.NamedTemporaryFile()
     >>> _ = f.write(
-    ... b'sum1  ./a  fck0sha2!a:10,b:10,c:10,r:5,s:5,t:5\\n'
-    ... b'sum2  ./b  fck0sha2!b:10,c:10,m:10,x:5,s:5,y:5\\n'
+    ... b'bee1  ./a  fck0sha2!aa:10,bb:10,cc:10,f1:5,dd:5,f2:5\\n'
+    ... b'bee2  ./b  fck0sha2!bb:10,cc:10,f3:10,f4:5,dd:5,f5:5\\n'
     ... )
     >>> f.flush()
     >>> s = f.name
@@ -330,15 +313,15 @@ def main():
 
     try:
         print_diff(
-            open(chunksums1),
-            open(chunksums2),
+            Chunksums.parse(open(chunksums1)),
+            Chunksums.parse(open(chunksums2)),  # FIXME open same file only once
             args.file1,
             args.file2,
             bar_width=args.barwidth,
             color=color,
             oneline=oneline,
         )
-    except FileNotExists as e:
+    except FileNotFoundError as e:
         print(e)
         sys.exit(1)
 

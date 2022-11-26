@@ -114,6 +114,13 @@ class Chunksums:
     def __repr__(self):
         return f"<Chunksums {self.path!r}, {len(self.files)} files>"
 
+    def get_file(self, path):
+        try:
+            hash = self.files[path]
+        except KeyError:
+            raise FileNotFoundError(f"file path not found: {path}")
+        return self.hashes[hash]
+
     @property
     def chunk2file_id(self):
         if self._chunk2file_id is not None:
