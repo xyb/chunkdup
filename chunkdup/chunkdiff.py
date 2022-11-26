@@ -311,7 +311,7 @@ def main():
         "-s",
         "--chunksums",
         action="append",
-        help="path to chunksums",
+        help="path to chunksums file",
     )
     parser.add_argument("file1", nargs="?", help="path to file")
     parser.add_argument("file2", nargs="?", help="path to file")
