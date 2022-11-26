@@ -4,7 +4,10 @@ pre-commit:
 test: unittest
 
 unittest:
-	pytest --doctest-modules --last-failed --durations=3
+	pytest
 
 coverage:
-	pytest --doctest-modules --last-failed --durations=3 --cov --cov-report term-missing --cov-report html --cov-report xml
+	pytest --cov-report html --cov-report xml
+
+tdd:
+	ptw
