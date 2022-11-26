@@ -1,9 +1,13 @@
+def load_hash(hash):
+    if isinstance(hash, bytes):
+        return hash
+    else:
+        return bytes.fromhex(hash)
+
+
 class File:
     def __init__(self, hash, path, alg_name, chunks):
-        if isinstance(hash, bytes):
-            self.hash = hash
-        else:
-            self.hash = bytes.fromhex(hash)
+        self.hash = load_hash(hash)
         self.path = path
         self.alg_name = alg_name
         self._load_chunks(chunks)
@@ -14,10 +18,7 @@ class File:
             self.hashes, self.sizes = [], []
         else:
             chunks = list(
-                [
-                    (hash if isinstance(hash, bytes) else bytes.fromhex(hash), size)
-                    for hash, size in chunks
-                ],
+                [(load_hash(hash), size) for hash, size in chunks],
             )
             self.hashes, self.sizes = list(zip(*chunks))
 
