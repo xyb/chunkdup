@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import signal
 import sys
 from difflib import SequenceMatcher
@@ -166,27 +167,25 @@ def print_plain_report(dups, output_file):
         )
 
 
-def help():
-    doc = """Find (partial content) duplicate files.
-
-Usage: {cmd} <chunksums_file1> <chunksums_file2>
-
+command_desc = "Find (partial content) duplicate files."
+command_long_desc = """
 Examples:
 
   $ chunksum dir1/ -f chunksums.dir1
   $ chunksum dir2/ -f chunksums.dir2
-  $ {cmd} chunksums.dir1 chunksums.dir2
+  $ %(prog)s chunksums.dir1 chunksums.dir2
 """
-
-    print(doc.format(cmd=sys.argv[0]))
 
 
 def main():
     """
     >>> sys.argv = ['chunkdup']
-    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    >>> try:
+    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except:
+    ...     pass
+    usage: chunkdup ...
     Find ...
-    Usage: ...
     ...
 
     >>> import tempfile
@@ -205,12 +204,22 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-    if len(sys.argv) == 3:
-        path1, path2 = sys.argv[1:3]
-        dups = find_dup(open(path1), open(path2))
-        print_plain_report(dups, sys.stdout)
-    else:
-        help()
+    parser = argparse.ArgumentParser(
+        description=command_desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=command_long_desc,
+    )
+
+    parser.add_argument("chunksums1", nargs="?", help="path to chunksums")
+    parser.add_argument("chunksums2", nargs="?", help="path to chunksums")
+    args = parser.parse_args()
+
+    if not args.chunksums1 or not args.chunksums2:
+        parser.print_help()
+        sys.exit()
+
+    dups = find_dup(open(args.chunksums1), open(args.chunksums2))
+    print_plain_report(dups, sys.stdout)
 
 
 if __name__ == "__main__":
