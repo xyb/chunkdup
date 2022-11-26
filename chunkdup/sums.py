@@ -6,6 +6,10 @@ class File:
             self.hash = bytes.fromhex(hash)
         self.path = path
         self.alg_name = alg_name
+        self._load_chunks(chunks)
+        self.size = sum(self.sizes)
+
+    def _load_chunks(self, chunks):
         if not chunks:
             self.hashes, self.sizes = [], []
         else:
@@ -16,7 +20,6 @@ class File:
                 ],
             )
             self.hashes, self.sizes = list(zip(*chunks))
-        self.size = sum(self.sizes)
 
     def __repr__(self):
         """
