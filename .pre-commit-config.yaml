@@ -11,6 +11,15 @@ repos:
     hooks:
       - id: codespell
 
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v1.7.7
+    hooks:
+    - id: autoflake
+      name: autoflake
+      args: ["--in-place", "--remove-unused-variables", "--remove-all-unused-imports"]
+      language: python
+      files: \.py$
+
   - repo: https://github.com/asottile/reorder_python_imports
     rev: v3.9.0
     hooks:
@@ -46,6 +55,12 @@ repos:
     rev: v0.10.1
     hooks:
       - id: validate-pyproject
+
+  - repo: https://github.com/yunojuno/pre-commit-xenon
+    rev: cc59b0431a5d072786b59430e9b342b2881064f6
+    hooks:
+    - id: xenon
+      args: ["--max-average=A", "--max-modules=A", "--max-absolute=B"]
 
   - repo: https://github.com/python-poetry/poetry
     rev: '1.2.2'
