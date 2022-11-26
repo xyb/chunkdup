@@ -28,23 +28,23 @@ Examples:
 ```
 
 ```
-usage: chunkdiff [-h] [-b BAR] [-s BARSIZE] [-n]
-                 [chunksums1] [chunksums2] [file1] [file2]
+usage: chunkdiff [-h] [-b BAR] [-w BARWIDTH] [-n] [-s CHUNKSUMS]
+                 [file1] [file2]
 
 Show the difference of two files.
 
 positional arguments:
-  chunksums1            path to chunksums
-  chunksums2            path to chunksums
-  file1                 path to chunksums
-  file2                 path to chunksums
+  file1                 path to file
+  file2                 path to file
 
 optional arguments:
   -h, --help            show this help message and exit
   -b BAR, --bar BAR     the style of bar. default: oneline
-  -s BARSIZE, --barsize BARSIZE
-                        the size of bar. default: 40
+  -w BARWIDTH, --barwidth BARWIDTH
+                        the width of bar. default: 40
   -n, --nocolor         do not colorize output. default: False
+  -s CHUNKSUMS, --chunksums CHUNKSUMS
+                        path to chunksums file
 
 Examples:
 
