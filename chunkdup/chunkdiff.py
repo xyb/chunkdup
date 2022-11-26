@@ -245,10 +245,7 @@ def main():
     ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
 
     >>> sys.argv = ['chunkdiff', f1.name, f2.name, './bad', './beef']
-    >>> try:
-    ...   main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    ... except FileNotExists:
-    ...  pass
+    >>> main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
     file path not found: ./bad
     """
     if len(sys.argv) >= 5:
