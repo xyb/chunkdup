@@ -4,7 +4,7 @@ import signal
 import sys
 from difflib import SequenceMatcher
 
-from .index import get_index
+from .sums import Chunksums
 
 
 def diff_ratio(a, b, sizes1, sizes2):
@@ -30,16 +30,9 @@ def diff_ratio(a, b, sizes1, sizes2):
     return ratio
 
 
-def get_file_info(file_id, index):
-    index.file_id2chunk
-    path = index._file_ids[file_id]
-    size = index._files[path]["size"]
-    return path, size
-
-
-def get_dup_file_id_pairs(index1, index2):
-    chunks1 = index1.chunk2file_id
-    chunks2 = index2.chunk2file_id
+def get_dup_file_id_pairs(chunksums1, chunksums2):
+    chunks1 = chunksums1.chunk2file_id
+    chunks2 = chunksums2.chunk2file_id
     same_chunks = set(chunks1) & set(chunks2)
 
     same_file_ids1 = {c: chunks1[c] for c in same_chunks}
@@ -50,50 +43,50 @@ def get_dup_file_id_pairs(index1, index2):
         ids1 = same_file_ids1[c]
         ids2 = same_file_ids2[c]
         file_id_pairs.extend([(x, y) for x in ids1 for y in ids2])
-    return list(set(file_id_pairs))
+    return sorted(set(file_id_pairs))
 
 
-def find_dup_files(index1, index2):
-    file_id_pairs = get_dup_file_id_pairs(index1, index2)
-
-    file_ids1 = index1.file_id2chunk
-    file_ids2 = index2.file_id2chunk
+def find_dup_files(chunksums1, chunksums2):
+    file_id_pairs = get_dup_file_id_pairs(chunksums1, chunksums2)
 
     dups = {}
-    for f1, f2 in file_id_pairs:
-        ids1 = file_ids1[f1]
-        ids2 = file_ids2[f2]
-        path1, size1 = get_file_info(f1, index1)
-        path2, size2 = get_file_info(f2, index2)
+    for hash1, hash2 in file_id_pairs:
+        f1 = chunksums1.hashes[hash1]
+        f2 = chunksums2.hashes[hash2]
         # avoid compare two files twice
-        if (size2, path2, size1, path1) in dups:
+        if (f2.size, f2.path, f1.size, f1.path) in dups:
             continue
 
-        ratio = diff_ratio(ids1, ids2, index1.chunk2size, index2.chunk2size)
-        if path1 == path2 and ratio == 1.0:
+        ratio = diff_ratio(
+            f1.hashes,
+            f2.hashes,
+            dict(f1.chunks),
+            dict(f2.chunks),
+        )
+        if f1.path == f2.path and ratio == 1.0:
             continue
-        dups[(size1, path1, size2, path2)] = ratio
+        dups[(f1.size, f1.path, f2.size, f2.path)] = ratio
     return [[ratio] + list(key) for key, ratio in dups.items()]
 
 
-def find_dup(chunksum_file1, chunksum_file2):
+def find_dup(chunksums1, chunksums2):
     """
     >>> import io
     >>> from pprint import pprint
     >>> chunksum1 = '''
-    ... sum1  /A/1  fck0sha2!a:10,b:10
-    ... sum2  /A/2  fck0sha2!c:10,d:10,e:10
-    ... sum3  /A/3  fck0sha2!f:10,g:10
-    ... sum4  /A/4  fck0sha2!h:10
+    ... bee1  /A/1  fck0sha2!aa:10,bb:10
+    ... bee2  /A/2  fck0sha2!cc:10,dd:10,ee:10
+    ... bee3  /A/3  fck0sha2!ff:10,f0:10
+    ... bee4  /A/4  fck0sha2!f1:10
     ... '''
     >>> chunksum2 = '''
-    ... sum5  /B/1  fck0sha2!m:10,n:10
-    ... sum6  /B/2  fck0sha2!c:10,d:10,f:10
-    ... sum7  /B/3  fck0sha2!f:10,x:10
-    ... sum8  /B/4  fck0sha2!h:10
+    ... bee5  /B/1  fck0sha2!a1:10,a2:10
+    ... bee6  /B/2  fck0sha2!cc:10,dd:10,ff:10
+    ... bee7  /B/3  fck0sha2!ff:10,a3:10
+    ... bee8  /B/4  fck0sha2!f1:10
     ... '''
-    >>> file1 = io.StringIO(chunksum1)
-    >>> file2 = io.StringIO(chunksum2)
+    >>> file1 = Chunksums.parse(io.StringIO(chunksum1))
+    >>> file2 = Chunksums.parse(io.StringIO(chunksum2))
     >>> pprint(find_dup(file1, file2))
     [[1.0, 10, '/A/4', 10, '/B/4'],
      [0.6666666666666666, 30, '/A/2', 30, '/B/2'],
@@ -101,18 +94,16 @@ def find_dup(chunksum_file1, chunksum_file2):
      [0.4, 20, '/A/3', 30, '/B/2']]
 
     >>> chunksum_repeat = '''
-    ... sum  a  fck0sha2!a:1,a:1,a:1,b:2
-    ... sum  b  fck0sha2!a:1,b:2
-    ... sum  c  fck0sha2!a:1,a:1,a:1,b:2
+    ... bee1  a  fck0sha2!aa:1,aa:1,aa:1,bb:2
+    ... bee2  b  fck0sha2!aa:1,bb:2
+    ... bee3  c  fck0sha2!aa:1,aa:1,aa:1,bb:2
     ... '''
-    >>> file1 = io.StringIO(chunksum_repeat)
-    >>> file2 = io.StringIO(chunksum_repeat)
+    >>> file1 = Chunksums.parse(io.StringIO(chunksum_repeat))
+    >>> file2 = Chunksums.parse(io.StringIO(chunksum_repeat))
     >>> pprint(find_dup(file1, file2))
-    [[1.0, 5, 'c', 5, 'a'], [0.75, 5, 'a', 3, 'b'], [0.75, 3, 'b', 5, 'c']]
+    [[1.0, 5, 'a', 5, 'c'], [0.75, 5, 'a', 3, 'b'], [0.75, 3, 'b', 5, 'c']]
     """
-    index1 = get_index(chunksum_file1)
-    index2 = get_index(chunksum_file2)
-    dups = sorted(find_dup_files(index1, index2), reverse=True)
+    dups = sorted(find_dup_files(chunksums1, chunksums2), reverse=True)
     return dups
 
 
@@ -120,19 +111,19 @@ def print_plain_report(dups, output_file):
     """
     >>> import io
     >>> chunksum1 = '''
-    ... sum1  /A/1  fck0sha2!a:10,b:10
-    ... sum2  /A/2  fck0sha2!c:10,d:10,e:10
-    ... sum3  /A/3  fck0sha2!f:10,g:10
-    ... sum4  /A/4  fck0sha2!h:10
+    ... bee1  /A/1  fck0sha2!aa:10,bb:10
+    ... bee2  /A/2  fck0sha2!cc:10,dd:10,ee:10
+    ... bee3  /A/3  fck0sha2!ff:10,f0:10
+    ... bee4  /A/4  fck0sha2!f1:10
     ... '''
     >>> chunksum2 = '''
-    ... sum5  /B/1  fck0sha2!m:10,n:10
-    ... sum6  /B/2  fck0sha2!c:10,d:10,f:10
-    ... sum7  /B/3  fck0sha2!f:10,x:10
-    ... sum8  /B/4  fck0sha2!h:10
+    ... bee5  /B/1  fck0sha2!a1:10,a2:10
+    ... bee6  /B/2  fck0sha2!cc:10,dd:10,ff:10
+    ... bee7  /B/3  fck0sha2!ff:10,a3:10
+    ... bee8  /B/4  fck0sha2!f1:10
     ... '''
-    >>> file1 = io.StringIO(chunksum1)
-    >>> file2 = io.StringIO(chunksum2)
+    >>> file1 = Chunksums.parse(io.StringIO(chunksum1))
+    >>> file2 = Chunksums.parse(io.StringIO(chunksum2))
     >>> dups = find_dup(file1, file2)
     >>> print_plain_report(dups, sys.stdout)
     100.00%  /A/4 (10B)  /B/4 (10B)
@@ -141,15 +132,15 @@ def print_plain_report(dups, output_file):
      40.00%  /A/3 (20B)  /B/2 (30B)
 
     >>> chunksum_repeat = '''
-    ... sum  a  fck0sha2!a:1,a:1,a:1,b:2
-    ... sum  b  fck0sha2!a:1,b:2
-    ... sum  c  fck0sha2!a:1,a:1,a:1,b:2
+    ... bee1  a  fck0sha2!aa:1,aa:1,aa:1,bb:2
+    ... bee2  b  fck0sha2!aa:1,bb:2
+    ... bee3  c  fck0sha2!aa:1,aa:1,aa:1,bb:2
     ... '''
-    >>> file1 = io.StringIO(chunksum_repeat)
-    >>> file2 = io.StringIO(chunksum_repeat)
+    >>> file1 = Chunksums.parse(io.StringIO(chunksum_repeat))
+    >>> file2 = Chunksums.parse(io.StringIO(chunksum_repeat))
     >>> dups = find_dup(file1, file2)
     >>> print_plain_report(dups, sys.stdout)
-    100.00%  c (5B)  a (5B)
+    100.00%  a (5B)  c (5B)
      75.00%  a (5B)  b (3B)
      75.00%  b (3B)  c (5B)
     """
@@ -190,10 +181,10 @@ def main():
 
     >>> import tempfile
     >>> f1 = tempfile.NamedTemporaryFile()
-    >>> _ = f1.write(b'sum1  /A/1  fck0sha2!a:10,b:10')
+    >>> _ = f1.write(b'bee1  /A/1  fck0sha2!aa:10,bb:10')
     >>> f1.flush()
     >>> f2 = tempfile.NamedTemporaryFile()
-    >>> _ = f2.write(b'sum2  /B/1  fck0sha2!c:10,b:10')
+    >>> _ = f2.write(b'bee2  /B/1  fck0sha2!cc:10,bb:10')
     >>> f2.flush()
     >>> sys.argv = ['chunkdup', f1.name, f2.name]
     >>> main()
@@ -218,7 +209,10 @@ def main():
         parser.print_help()
         sys.exit()
 
-    dups = find_dup(open(args.chunksums1), open(args.chunksums2))
+    dups = find_dup(
+        Chunksums.parse(open(args.chunksums1)),
+        Chunksums.parse(open(args.chunksums2)),
+    )
     print_plain_report(dups, sys.stdout)
 
 
