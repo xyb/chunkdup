@@ -239,6 +239,7 @@ Examples:
 
   $ chunksum dir1/ -f chunksums.dir1
   $ chunksum dir2/ -f chunksums.dir2
+
   $ %(prog)s chunksums.dir1 chunksums.dir2 dir1/file1 dir2/file2
 
   $ %(prog)s chunksums chunksums ./file1 ./file2

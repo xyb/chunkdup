@@ -9,12 +9,49 @@ Find (partial content) duplicate files using [chunksum](https://github.com/xyb/c
 [![Support python versions](https://img.shields.io/pypi/pyversions/chunkdup)](https://pypi.org/project/chunkdup/)
 
 ```
+usage: chunkdup [-h] [chunksums1] [chunksums2]
+
 Find (partial content) duplicate files.
 
-Usage: chunkdup <chunksums_file1> <chunksums_file2>
+positional arguments:
+  chunksums1  path to chunksums
+  chunksums2  path to chunksums
+
+optional arguments:
+  -h, --help  show this help message and exit
 
 Examples:
 
   $ chunksum dir1/ -f chunksums.dir1
   $ chunksum dir2/ -f chunksums.dir2
   $ chunkdup chunksums.dir1 chunksums.dir2
+```
+
+```
+usage: chunkdiff [-h] [-b BAR] [-s BARSIZE] [-n]
+                 [chunksums1] [chunksums2] [file1] [file2]
+
+Show the difference of two files.
+
+positional arguments:
+  chunksums1            path to chunksums
+  chunksums2            path to chunksums
+  file1                 path to chunksums
+  file2                 path to chunksums
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -b BAR, --bar BAR     the style of bar. default: oneline
+  -s BARSIZE, --barsize BARSIZE
+                        the size of bar. default: 40
+  -n, --nocolor         do not colorize output. default: False
+
+Examples:
+
+  $ chunksum dir1/ -f chunksums.dir1
+  $ chunksum dir2/ -f chunksums.dir2
+
+  $ chunkdiff chunksums.dir1 chunksums.dir2 dir1/file1 dir2/file2
+
+  $ chunkdiff chunksums chunksums ./file1 ./file2
+```
