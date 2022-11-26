@@ -28,6 +28,7 @@ chunksum = "*"
 pytest = "*"
 pre-commit = "^2.20.0"
 pytest-coverage = "*"
+pytest-watch = "^4.2.0"
 
 [build-system]
 requires = ["poetry-core"]
