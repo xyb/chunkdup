@@ -2,31 +2,25 @@
 import argparse
 import signal
 import sys
-from difflib import SequenceMatcher
 
+from .diff import find_diff
 from .sums import Chunksums
 
 
 def diff_ratio(a, b, sizes1, sizes2):
     """
     >>> sizes = {'a': 10, 'b': 10, 'c': 20}
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'a', 'a'], sizes, sizes)
+    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'a', 'a'],
+    ...            [10, 10, 10, 10], [10, 10, 10, 10])
     1.0
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'b', 'a'], sizes, sizes)
+    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'b', 'a'],
+    ...            [10, 10, 10, 10], [10, 10, 10, 10])
     0.75
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'c', 'a'], sizes, sizes)
+    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'c', 'a'],
+    ...            [10, 10, 10, 10], [10, 20, 10])
     0.5
     """
-    matches = 0
-    for tag, i1, i2, _, _ in SequenceMatcher(a=a, b=b).get_opcodes():
-        if tag != "equal":
-            continue
-        matches += sum(
-            [sizes1.get(chunk, 0) or sizes2.get(chunk, 0) for chunk in a[i1:i2]],
-        )
-    size1 = sum([sizes1.get(chunk) for chunk in a])
-    size2 = sum([sizes2.get(chunk) for chunk in b])
-    ratio = (2 * matches) / (size1 + size2)
+    _, ratio, _ = find_diff(a, b, sizes1, sizes2)
     return ratio
 
 
@@ -60,8 +54,8 @@ def find_dup_files(chunksums1, chunksums2):
         ratio = diff_ratio(
             f1.hashes,
             f2.hashes,
-            dict(f1.chunks),
-            dict(f2.chunks),
+            f1.sizes,
+            f2.sizes,
         )
         if f1.path == f2.path and ratio == 1.0:
             continue
