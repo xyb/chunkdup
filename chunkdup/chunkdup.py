@@ -5,6 +5,7 @@ import sys
 
 from .diff import find_diff
 from .sums import Chunksums
+from .utils import humanize
 
 
 def diff_ratio(a, b, sizes1, sizes2):
@@ -140,12 +141,12 @@ def print_plain_report(dups, output_file):
     """
     for ratio, size1, file1, size2, file2 in dups:
         print(
-            "{:>6.2f}%  {} ({}B)  {} ({}B)".format(
+            "{:>6.2f}%  {} ({})  {} ({})".format(
                 ratio * 100,
                 file1,
-                size1,
+                humanize(size1),
                 file2,
-                size2,
+                humanize(size2),
             ),
             file=output_file,
             flush=True,
@@ -175,14 +176,14 @@ def main():
 
     >>> import tempfile
     >>> f1 = tempfile.NamedTemporaryFile()
-    >>> _ = f1.write(b'bee1  /A/1  fck0sha2!aa:10,bb:10')
+    >>> _ = f1.write(b'bee1  /A/1  fck0sha2!aa:1000,bb:1000')
     >>> f1.flush()
     >>> f2 = tempfile.NamedTemporaryFile()
-    >>> _ = f2.write(b'bee2  /B/1  fck0sha2!cc:10,bb:10')
+    >>> _ = f2.write(b'bee2  /B/1  fck0sha2!cc:1000,bb:1000')
     >>> f2.flush()
     >>> sys.argv = ['chunkdup', f1.name, f2.name]
     >>> main()
-     50.00%  /A/1 (20B)  /B/1 (20B)
+     50.00%  /A/1 (1.95KB)  /B/1 (1.95KB)
     """
 
     # Don't turn these signal into exceptions, just die.
