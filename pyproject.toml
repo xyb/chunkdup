@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "chunkdup"
-version = "0.3.0"
+version = "0.4.0"
 description = "Find (partial content) duplicate files."
 authors = ["Xie Yanbo <xieyanbo@gmail.com>"]
 license = "MIT"
@@ -9,8 +9,10 @@ homepage = "https://github.com/xyb/chunkdup"
 repository = "https://github.com/xyb/chunkdup"
 classifiers = [
     "Environment :: Console",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Topic :: Utilities",
+    "Topic :: Terminals",
+    "Topic :: Desktop Environment :: File Managers",
 ]
 
 [tool.poetry.urls]
