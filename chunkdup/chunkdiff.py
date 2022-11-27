@@ -1,9 +1,9 @@
 import argparse
 import sys
-from difflib import SequenceMatcher
 from itertools import groupby
 from math import ceil
 
+from .diff import find_diff
 from .sums import Chunksums
 
 
@@ -16,25 +16,6 @@ RED_BG = "\033[101m"
 GREEN_BG = "\033[102m"
 YELLOW_BG = "\033[103m"
 END = "\033[0m"
-
-
-def find_diff(chunks1, sizes1, chunks2, sizes2):
-    s = SequenceMatcher(a=chunks1, b=chunks2)
-    diff = []
-    total = 0
-    tag_map = {
-        "equal": ["=", "="],
-        "replace": ["-", "+"],
-        "delete": ["-", " "],
-        "insert": [" ", "+"],
-    }
-    for tag, i1, i2, j1, j2 in s.get_opcodes():
-        size1 = sum([s for s in sizes1[i1:i2]])
-        size2 = sum([s for s in sizes2[j1:j2]])
-        total += max(size1, size2)
-        diff.append(tag_map[tag] + [size1, size2])
-
-    return total, diff
 
 
 def fill_line(bar_width, total, diff):
@@ -66,12 +47,13 @@ def get_bar_layer(chunksums1, chunksums2, path1, path2, bar_width=40):
     f1 = chunksums1.get_file(path1)
     f2 = chunksums2.get_file(path2)
 
-    total, diff = find_diff(f1.hashes, f1.sizes, f2.hashes, f2.sizes)
+    total, ratio, diff = find_diff(f1.hashes, f2.hashes, f1.sizes, f2.sizes)
     line1, line2 = fill_line(bar_width, total, diff)
-    return line1, line2, f1.size, f2.size
+    return ratio, line1, line2, f1.size, f2.size
 
 
 def print_2lines_bar(
+    ratio,
     line1,
     line2,
     filesize1,
@@ -83,13 +65,13 @@ def print_2lines_bar(
     """
     >>> line1 = ['-----', '==', '-----', '===']
     >>> line2 = ['++', '   ', '==', '+', '    ', '===']
-    >>> print_2lines_bar(line1, line2, 100, 70, color=False)
-           100  -----==-----===
-            70  ++   ==+    ===
-    >>> print_2lines_bar(line1, line2, 100, 70)
+    >>> print_2lines_bar(0.5, line1, line2, 100, 70, color=False)
+     50.00%     100  -----==-----===
+                 70  ++   ==+    ===
+    >>> print_2lines_bar(0.5, line1, line2, 100, 70)
     ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-           100  ...
-            70  ...
+     50.00%     100  ...
+                 70  ...
     """
 
     def colorful(line):
@@ -105,15 +87,17 @@ def print_2lines_bar(
         line1 = colorful(line1)
         line2 = colorful(line2)
 
-    for size, line in ((filesize1, line1), (filesize2, line2)):
+    percent = f"{ratio * 100:>6.2f}%"
+    for pre, size, line in ((percent, filesize1, line1), ("", filesize2, line2)):
         print(
-            "{:>10}  {}".format(size, "".join(line)),
+            "{:>7s}  {:>6}  {}".format(pre, size, "".join(line)),
             file=output or sys.stdout,
             flush=True,
         )
 
 
 def print_1line_bar(
+    ratio,
     line1,
     line2,
     filesize1,
@@ -125,11 +109,11 @@ def print_1line_bar(
     """
     >>> line1 = ['-----', '==', '     ', '===']
     >>> line2 = ['++', '   ', '==', '+++++', '===']
-    >>> print_1line_bar(line1, line2, 100, 70, color=False)
-    ▀100  ▄70  ██▀▀▀▒▒▄▄▄▄▄▒▒▒
-    >>> print_1line_bar(line1, line2, 100, 70, color=True)
+    >>> print_1line_bar(0.6, line1, line2, 100, 70, color=False)
+     60.00%  ▀100  ▄70  ██▀▀▀▒▒▄▄▄▄▄▒▒▒
+    >>> print_1line_bar(0.6, line1, line2, 100, 70, color=True)
     ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    ▀100  ▄70  ...
+     60.00%  ▀100  ▄70  ...
     """
 
     pairs = list("".join(x) for x in zip("".join(line1), "".join(line2)))
@@ -156,7 +140,8 @@ def print_1line_bar(
         bar.append(item)
 
     print(
-        "▀{}  ▄{}  {}".format(
+        "{:>6.2f}%  ▀{}  ▄{}  {}".format(
+            ratio * 100,
             filesize1,
             filesize2,
             "".join(bar),
@@ -188,13 +173,13 @@ def print_diff(
     >>> a = Chunksums.parse(open(f1.name))
     >>> b = Chunksums.parse(open(f2.name))
     >>> print_diff(a, b, './a', './b', color=False)
-    ▀35  ▄35  ▀▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▄▄▄▄▄▒▒▒▒▒▄▄▄▄▄▒▒▒▒▒█████
+     57.14%  ▀35  ▄35  ▀▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▄▄▄▄▄▒▒▒▒▒▄▄▄▄▄▒▒▒▒▒█████
     >>> print_diff(a, b, './a', './b', color=False, oneline=False)
-            35  ---------=========     =====     =====-----
-            35           =========+++++=====+++++=====+++++
+     57.14%      35  ---------=========     =====     =====-----
+                 35           =========+++++=====+++++=====+++++
     """
 
-    line1, line2, filesize1, filesize2 = get_bar_layer(
+    ratio, line1, line2, filesize1, filesize2 = get_bar_layer(
         chunksums1,
         chunksums2,
         path1,
@@ -206,6 +191,7 @@ def print_diff(
     else:
         print_func = print_2lines_bar
     print_func(
+        ratio,
         line1,
         line2,
         filesize1,
@@ -250,14 +236,14 @@ def main():
     >>> s = f.name
     >>> sys.argv = ['chunkdiff', '-s', s, '-s', s, './a', './b', '--nocolor']
     >>> main()
-    ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
+     55.56%  ▀45  ▄45  ▀▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒████▄▄▄▄▄▄▄▒▒▒▒████
     >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-w', '10']
     >>> main()
-    ▀45  ▄45  ▀▀▒▒▒▒█▄▄▒█
+     55.56%  ▀45  ▄45  ▀▀▒▒▒▒█▄▄▒█
     >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-b', 'twolines']
     >>> main()
-            45  --------===============----       ====----
-            45          ===============+++++++++++====++++
+     55.56%      45  --------===============----       ====----
+                 45          ===============+++++++++++====++++
 
     >>> sys.argv = ['chunkdiff', '-s', s, './bad', './beef']
     >>> try:
