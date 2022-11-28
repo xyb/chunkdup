@@ -1,6 +1,7 @@
 from math import ceil
 
 from .diff import find_diff
+from .diffbar import Bar
 
 
 def diff_ratio(a, b, sizes1, sizes2):
@@ -110,32 +111,7 @@ class Differ:
         )
         return self.__dups
 
-    @classmethod
-    def _fill_line(cls, bar_width, total, diff):
-        zoom = bar_width / total
-
-        def char_bar(char, size, line):
-            width = ceil(size * zoom)
-            if width:
-                line.append(char * width)
-            return width
-
-        def padding_bar(width, max_width, line):
-            padding = max_width - width
-            if padding:
-                line.append(" " * padding)
-
-        line1 = []
-        line2 = []
-        for char1, char2, size1, size2 in diff:
-            width1 = char_bar(char1, size1, line1)
-            width2 = char_bar(char2, size2, line2)
-            width = max(width1, width2)
-            padding_bar(width1, width, line1)
-            padding_bar(width2, width, line2)
-        return line1, line2
-
-    def compare(self, path1, path2, bar_width=40):
+    def compare(self, path1, path2):
         """
         >>> import sys
         >>> import tempfile
@@ -149,16 +125,55 @@ class Differ:
         >>> sums1 = Chunksums.parse(open(f1.name))
         >>> sums2 = Chunksums.parse(open(f2.name))
         >>> from pprint import pprint
-        >>> pprint(Differ(sums1, sums2).compare('./a', './b', bar_width=20))
-        (0.5333333333333333,
-         ['----', '====', '  ', '==', '  ', '==', '--', '  '],
-         ['    ', '====', '++', '==', '++', '==', '++++'],
-         35,
-         40)
+        >>> pprint(Differ(sums1, sums2).compare('./a', './b').get_parts(20))
+        (['----', '====', '  ', '==', '  ', '==', '--', '  '],
+         ['    ', '====', '++', '==', '++', '==', '++++'])
         """
         f1 = self.chunksums1.get_file(path1)
         f2 = self.chunksums2.get_file(path2)
 
         total, ratio, diff = find_diff(f1.hashes, f2.hashes, f1.sizes, f2.sizes)
-        line1, line2 = self._fill_line(bar_width, total, diff)
-        return ratio, line1, line2, f1.size, f2.size
+        res = CompareResult(self, f1, f2, total, ratio, diff)
+        return res
+
+
+class CompareResult:
+    def __init__(self, differ, file1, file2, total, ratio, detail):
+        self.differ = differ
+        self.file1 = file1
+        self.file2 = file2
+        self.total = total
+        self.ratio = ratio
+        self.detail = detail
+
+    def get_parts(self, bar_width):
+        line1, line2 = fill_line(bar_width, self.total, self.detail)
+        return line1, line2
+
+    def get_bar(self, width, options):
+        return Bar(self, width, options)
+
+
+def fill_line(bar_width, total, diff):
+    zoom = bar_width / total
+
+    def char_bar(char, size, line):
+        width = ceil(size * zoom)
+        if width:
+            line.append(char * width)
+        return width
+
+    def padding_bar(width, max_width, line):
+        padding = max_width - width
+        if padding:
+            line.append(" " * padding)
+
+    line1 = []
+    line2 = []
+    for char1, char2, size1, size2 in diff:
+        width1 = char_bar(char1, size1, line1)
+        width2 = char_bar(char2, size2, line2)
+        width = max(width1, width2)
+        padding_bar(width1, width, line1)
+        padding_bar(width2, width, line2)
+    return line1, line2

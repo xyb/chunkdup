@@ -1,120 +1,8 @@
 import argparse
 import sys
-from itertools import groupby
 
 from .differ import Differ
 from .sums import Chunksums
-from .utils import humanize
-
-
-GREY = "\033[90m"
-RED = "\033[91m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-GREY_BG = "\033[100m"
-RED_BG = "\033[101m"
-GREEN_BG = "\033[102m"
-YELLOW_BG = "\033[103m"
-END = "\033[0m"
-
-
-def print_2lines_bar(
-    ratio,
-    line1,
-    line2,
-    filesize1,
-    filesize2,
-    output=None,
-    bar_width=40,
-    color=True,
-):
-    """
-    >>> line1 = ['-----', '==', '-----', '===']
-    >>> line2 = ['++', '   ', '==', '+', '    ', '===']
-    >>> print_2lines_bar(0.5, line1, line2, 100, 70, color=False)
-     50.00%    100B  -----==-----===
-                70B  ++   ==+    ===
-    >>> print_2lines_bar(0.5, line1, line2, 100, 70)
-    ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-     50.00%    100B  ...
-                70B  ...
-    """
-
-    def colorful(line):
-        colors = {
-            "=": GREY_BG,
-            "-": RED_BG,
-            "+": GREEN_BG,
-            " ": YELLOW_BG,
-        }
-        return [colors[s[0]] + s + END for s in line]
-
-    if color:
-        line1 = colorful(line1)
-        line2 = colorful(line2)
-
-    percent = f"{ratio * 100:>6.2f}%"
-    for pre, size, line in ((percent, filesize1, line1), ("", filesize2, line2)):
-        print(
-            "{:>7s}  {:>6}  {}".format(pre, humanize(size), "".join(line)),
-            file=output or sys.stdout,
-            flush=True,
-        )
-
-
-def print_1line_bar(
-    ratio,
-    line1,
-    line2,
-    filesize1,
-    filesize2,
-    output=None,
-    bar_width=40,
-    color=True,
-):
-    """
-    >>> line1 = ['-----', '==', '     ', '===']
-    >>> line2 = ['++', '   ', '==', '+++++', '===']
-    >>> print_1line_bar(0.6, line1, line2, 100, 70, color=False)
-     60.00%  ▀100B  ▄70B  ██▀▀▀▒▒▄▄▄▄▄▒▒▒
-    >>> print_1line_bar(0.6, line1, line2, 100, 70, color=True)
-    ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-     60.00%  ▀100B  ▄70B  ...
-    """
-
-    pairs = list("".join(x) for x in zip("".join(line1), "".join(line2)))
-    chars = {
-        "==": "▒",
-        "-+": "█",
-        "- ": "▀",
-        " +": "▄",
-    }
-    colors = {
-        "==": ["▒", GREY + GREY_BG],  # fg: grey, bg: grey
-        "-+": ["▀", RED + GREEN_BG],  # fg/top half: red, bg/bottom half: green
-        "- ": ["▀", RED + YELLOW_BG],  # fg: red, bg: yellow
-        " +": ["▀", YELLOW + GREEN_BG],  # fg: yellow, bg: green
-    }
-    bar = []
-    for key, group in groupby(pairs):
-        width = len(list(group))
-        if color:
-            char, color_ = colors[key]
-            item = color_ + char * width + END
-        else:
-            item = chars[key] * width
-        bar.append(item)
-
-    print(
-        "{:>6.2f}%  ▀{}  ▄{}  {}".format(
-            ratio * 100,
-            humanize(filesize1),
-            humanize(filesize2),
-            "".join(bar),
-            file=output,
-            flush=True,
-        ),
-    )
 
 
 def print_diff(
@@ -146,25 +34,13 @@ def print_diff(
     """
 
     differ = Differ(chunksums1, chunksums2)
-    ratio, line1, line2, filesize1, filesize2 = differ.compare(
-        path1,
-        path2,
-        bar_width=bar_width,
-    )
-    if oneline:
-        print_func = print_1line_bar
-    else:
-        print_func = print_2lines_bar
-    print_func(
-        ratio,
-        line1,
-        line2,
-        filesize1,
-        filesize2,
-        output=output or sys.stdout,
-        bar_width=bar_width,
+    options = dict(
         color=color,
+        width=bar_width,
+        type="oneline" if oneline else "twolines",
     )
+    bar = differ.compare(path1, path2).get_bar(bar_width, options)
+    print(str(bar), file=output or sys.stdout, flush=True)
 
 
 command_desc = "Show the difference of two files."
