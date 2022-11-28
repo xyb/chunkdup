@@ -1,24 +1,8 @@
+from functools import total_ordering
 from math import ceil
 
 from .diff import find_diff
 from .diffbar import Bar
-
-
-def diff_ratio(a, b, sizes1, sizes2):
-    """
-    >>> sizes = {'a': 10, 'b': 10, 'c': 20}
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'a', 'a'],
-    ...            [10, 10, 10, 10], [10, 10, 10, 10])
-    1.0
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'b', 'a'],
-    ...            [10, 10, 10, 10], [10, 10, 10, 10])
-    0.75
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'c', 'a'],
-    ...            [10, 10, 10, 10], [10, 20, 10])
-    0.5
-    """
-    _, ratio, _ = find_diff(a, b, sizes1, sizes2)
-    return ratio
 
 
 class Differ:
@@ -69,11 +53,11 @@ class Differ:
         >>> from .sums import Chunksums
         >>> sums1 = Chunksums.parse(io.StringIO(chunksum1))
         >>> sums2 = Chunksums.parse(io.StringIO(chunksum2))
-        >>> pprint(Differ(sums1, sums2).dups)
-        [[1.0, 10, '/A/4', 10, '/B/4'],
-         [0.6666666666666666, 30, '/A/2', 30, '/B/2'],
-         [0.5, 20, '/A/3', 20, '/B/3'],
-         [0.4, 20, '/A/3', 30, '/B/2']]
+        >>> pprint(sorted(Differ(sums1, sums2).dups))
+        [<CompareResult 0.4, /A/3 : /B/2>,
+         <CompareResult 0.5, /A/3 : /B/3>,
+         <CompareResult 0.6666666666666666, /A/2 : /B/2>,
+         <CompareResult 1.0, /A/4 : /B/4>]
 
         >>> chunksum_repeat = '''
         ... bee1  a  fck0sha2!aa:1,aa:1,aa:1,bb:2
@@ -82,8 +66,10 @@ class Differ:
         ... '''
         >>> sums1 = Chunksums.parse(io.StringIO(chunksum_repeat))
         >>> sums2 = Chunksums.parse(io.StringIO(chunksum_repeat))
-        >>> pprint(Differ(sums1, sums2).dups)
-        [[1.0, 5, 'a', 5, 'c'], [0.75, 5, 'a', 3, 'b'], [0.75, 3, 'b', 5, 'c']]
+        >>> pprint(sorted(Differ(sums1, sums2).dups))
+        [<CompareResult 0.75, b : c>,
+         <CompareResult 0.75, a : b>,
+         <CompareResult 1.0, a : c>]
         """
         if self.__dups is not None:
             return self.__dups
@@ -96,19 +82,12 @@ class Differ:
             if (f2.size, f2.path, f1.size, f1.path) in dups:
                 continue
 
-            ratio = diff_ratio(
-                f1.hashes,
-                f2.hashes,
-                f1.sizes,
-                f2.sizes,
-            )
-            if f1.path == f2.path and ratio == 1.0:
+            cr = self._compare(f1, f2)
+
+            if f1.path == f2.path and cr.ratio == 1.0:
                 continue
-            dups[(f1.size, f1.path, f2.size, f2.path)] = ratio
-        self.__dups = sorted(
-            [[ratio] + list(key) for key, ratio in dups.items()],
-            reverse=True,
-        )
+            dups[(f1.size, f1.path, f2.size, f2.path)] = cr
+        self.__dups = list(dups.values())
         return self.__dups
 
     def compare(self, path1, path2):
@@ -131,12 +110,20 @@ class Differ:
         """
         f1 = self.chunksums1.get_file(path1)
         f2 = self.chunksums2.get_file(path2)
+        return self._compare(f1, f2)
 
-        total, ratio, diff = find_diff(f1.hashes, f2.hashes, f1.sizes, f2.sizes)
-        res = CompareResult(self, f1, f2, total, ratio, diff)
+    def _compare(self, file1, file2):
+        total, ratio, diff = find_diff(
+            file1.hashes,
+            file2.hashes,
+            file1.sizes,
+            file2.sizes,
+        )
+        res = CompareResult(self, file1, file2, total, ratio, diff)
         return res
 
 
+@total_ordering
 class CompareResult:
     def __init__(self, differ, file1, file2, total, ratio, detail):
         self.differ = differ
@@ -150,8 +137,27 @@ class CompareResult:
         line1, line2 = fill_line(bar_width, self.total, self.detail)
         return line1, line2
 
-    def get_bar(self, width, options):
-        return Bar(self, width, options)
+    def get_bar(self, options):
+        return Bar(self, options)
+
+    @property
+    def __key(self):
+        return (
+            self.ratio,
+            self.file1.size,
+            self.file1.path,
+            self.file2.size,
+            self.file2.path,
+        )
+
+    def __eq__(self, other):
+        return self.__key == other.__key
+
+    def __lt__(self, other):
+        return self.__key < other.__key
+
+    def __repr__(self):
+        return f"<CompareResult {self.ratio}, {self.file1.path} : {self.file2.path}>"
 
 
 def fill_line(bar_width, total, diff):
