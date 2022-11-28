@@ -3,103 +3,13 @@ import argparse
 import signal
 import sys
 
-from .diff import find_diff
+from .differ import Differ
 from .sums import Chunksums
 from .utils import humanize
 
 
-def diff_ratio(a, b, sizes1, sizes2):
-    """
-    >>> sizes = {'a': 10, 'b': 10, 'c': 20}
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'a', 'a'],
-    ...            [10, 10, 10, 10], [10, 10, 10, 10])
-    1.0
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'a', 'b', 'a'],
-    ...            [10, 10, 10, 10], [10, 10, 10, 10])
-    0.75
-    >>> diff_ratio(['a', 'a', 'a', 'a'], ['a', 'c', 'a'],
-    ...            [10, 10, 10, 10], [10, 20, 10])
-    0.5
-    """
-    _, ratio, _ = find_diff(a, b, sizes1, sizes2)
-    return ratio
-
-
-def get_dup_file_id_pairs(chunksums1, chunksums2):
-    chunks1 = chunksums1.chunk2file_id
-    chunks2 = chunksums2.chunk2file_id
-    same_chunks = set(chunks1) & set(chunks2)
-
-    same_file_ids1 = {c: chunks1[c] for c in same_chunks}
-    same_file_ids2 = {c: chunks2[c] for c in same_chunks}
-
-    file_id_pairs = []
-    for c in same_chunks:
-        ids1 = same_file_ids1[c]
-        ids2 = same_file_ids2[c]
-        file_id_pairs.extend([(x, y) for x in ids1 for y in ids2])
-    return sorted(set(file_id_pairs))
-
-
-def find_dup_files(chunksums1, chunksums2):
-    file_id_pairs = get_dup_file_id_pairs(chunksums1, chunksums2)
-
-    dups = {}
-    for hash1, hash2 in file_id_pairs:
-        f1 = chunksums1.hashes[hash1]
-        f2 = chunksums2.hashes[hash2]
-        # avoid compare two files twice
-        if (f2.size, f2.path, f1.size, f1.path) in dups:
-            continue
-
-        ratio = diff_ratio(
-            f1.hashes,
-            f2.hashes,
-            f1.sizes,
-            f2.sizes,
-        )
-        if f1.path == f2.path and ratio == 1.0:
-            continue
-        dups[(f1.size, f1.path, f2.size, f2.path)] = ratio
-    return [[ratio] + list(key) for key, ratio in dups.items()]
-
-
 def find_dup(chunksums1, chunksums2):
-    """
-    >>> import io
-    >>> from pprint import pprint
-    >>> chunksum1 = '''
-    ... bee1  /A/1  fck0sha2!aa:10,bb:10
-    ... bee2  /A/2  fck0sha2!cc:10,dd:10,ee:10
-    ... bee3  /A/3  fck0sha2!ff:10,f0:10
-    ... bee4  /A/4  fck0sha2!f1:10
-    ... '''
-    >>> chunksum2 = '''
-    ... bee5  /B/1  fck0sha2!a1:10,a2:10
-    ... bee6  /B/2  fck0sha2!cc:10,dd:10,ff:10
-    ... bee7  /B/3  fck0sha2!ff:10,a3:10
-    ... bee8  /B/4  fck0sha2!f1:10
-    ... '''
-    >>> file1 = Chunksums.parse(io.StringIO(chunksum1))
-    >>> file2 = Chunksums.parse(io.StringIO(chunksum2))
-    >>> pprint(find_dup(file1, file2))
-    [[1.0, 10, '/A/4', 10, '/B/4'],
-     [0.6666666666666666, 30, '/A/2', 30, '/B/2'],
-     [0.5, 20, '/A/3', 20, '/B/3'],
-     [0.4, 20, '/A/3', 30, '/B/2']]
-
-    >>> chunksum_repeat = '''
-    ... bee1  a  fck0sha2!aa:1,aa:1,aa:1,bb:2
-    ... bee2  b  fck0sha2!aa:1,bb:2
-    ... bee3  c  fck0sha2!aa:1,aa:1,aa:1,bb:2
-    ... '''
-    >>> file1 = Chunksums.parse(io.StringIO(chunksum_repeat))
-    >>> file2 = Chunksums.parse(io.StringIO(chunksum_repeat))
-    >>> pprint(find_dup(file1, file2))
-    [[1.0, 5, 'a', 5, 'c'], [0.75, 5, 'a', 3, 'b'], [0.75, 3, 'b', 5, 'c']]
-    """
-    dups = sorted(find_dup_files(chunksums1, chunksums2), reverse=True)
-    return dups
+    return Differ(chunksums1, chunksums2).dups
 
 
 def print_plain_report(dups, output_file):

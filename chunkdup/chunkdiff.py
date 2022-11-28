@@ -1,9 +1,8 @@
 import argparse
 import sys
 from itertools import groupby
-from math import ceil
 
-from .diff import find_diff
+from .differ import Differ
 from .sums import Chunksums
 from .utils import humanize
 
@@ -17,40 +16,6 @@ RED_BG = "\033[101m"
 GREEN_BG = "\033[102m"
 YELLOW_BG = "\033[103m"
 END = "\033[0m"
-
-
-def fill_line(bar_width, total, diff):
-    zoom = bar_width / total
-
-    def char_bar(char, size, line):
-        width = ceil(size * zoom)
-        if width:
-            line.append(char * width)
-        return width
-
-    def padding_bar(width, max_width, line):
-        padding = max_width - width
-        if padding:
-            line.append(" " * padding)
-
-    line1 = []
-    line2 = []
-    for char1, char2, size1, size2 in diff:
-        width1 = char_bar(char1, size1, line1)
-        width2 = char_bar(char2, size2, line2)
-        width = max(width1, width2)
-        padding_bar(width1, width, line1)
-        padding_bar(width2, width, line2)
-    return line1, line2
-
-
-def get_bar_layer(chunksums1, chunksums2, path1, path2, bar_width=40):
-    f1 = chunksums1.get_file(path1)
-    f2 = chunksums2.get_file(path2)
-
-    total, ratio, diff = find_diff(f1.hashes, f2.hashes, f1.sizes, f2.sizes)
-    line1, line2 = fill_line(bar_width, total, diff)
-    return ratio, line1, line2, f1.size, f2.size
 
 
 def print_2lines_bar(
@@ -180,9 +145,8 @@ def print_diff(
                 35B           =========+++++=====+++++=====+++++
     """
 
-    ratio, line1, line2, filesize1, filesize2 = get_bar_layer(
-        chunksums1,
-        chunksums2,
+    differ = Differ(chunksums1, chunksums2)
+    ratio, line1, line2, filesize1, filesize2 = differ.compare(
         path1,
         path2,
         bar_width=bar_width,
