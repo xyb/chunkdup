@@ -28,7 +28,7 @@ def print_plain_report(differ, output_file, bar=True, width=20, color=False):
     >>> differ = Differ(sums1, sums2)
     >>> print_plain_report(differ, sys.stdout)
     100.00%  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  /A/4 (10B)  /B/4 (10B)
-     66.67%  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒███████  /A/2 (30B)  /B/2 (30B)
+     66.67%  ▒▒▒▒▒▒▒▒▒▒▒▒▒███████  /A/2 (30B)  /B/2 (30B)
      50.00%  ▒▒▒▒▒▒▒▒▒▒██████████  /A/3 (20B)  /B/3 (20B)
      40.00%  ▄▄▄▄▄▄▄▄▄▄▒▒▒▒▒▀▀▀▀▀  /A/3 (20B)  /B/2 (30B)
     >>> print_plain_report(differ, sys.stdout, bar=False)
@@ -54,6 +54,8 @@ def print_plain_report(differ, output_file, bar=True, width=20, color=False):
     for cr in dups:
         if bar:
             options = dict(color=color, width=width)
+            # TODO add underline to highlight a bar from others
+            #      use '\u0332' or '\033[4m'
             sbar = cr.get_bar(options=options).format_bar()
             sbar += "  "
         else:
