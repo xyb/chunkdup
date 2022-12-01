@@ -2,8 +2,8 @@ from functools import total_ordering
 from itertools import islice
 from math import ceil
 
-from .diff import find_diff
 from .diffbar import Bar
+from .dire import Dire
 from .utils import iter_steps
 
 
@@ -55,7 +55,12 @@ class Differ:
         >>> from .sums import Chunksums
         >>> sums1 = Chunksums.parse(io.StringIO(chunksum1))
         >>> sums2 = Chunksums.parse(io.StringIO(chunksum2))
-        >>> pprint(sorted(Differ(sums1, sums2).dups))
+        >>> df = Differ(sums1, sums2)
+        >>> len(df._pairs)
+        4
+        >>> len(df.dups)
+        4
+        >>> pprint(sorted(df.dups))
         [<CompareResult 0.4, /A/3 : /B/2>,
          <CompareResult 0.5, /A/3 : /B/3>,
          <CompareResult 0.6666666666666666, /A/2 : /B/2>,
@@ -68,7 +73,12 @@ class Differ:
         ... '''
         >>> sums1 = Chunksums.parse(io.StringIO(chunksum_repeat))
         >>> sums2 = Chunksums.parse(io.StringIO(chunksum_repeat))
-        >>> pprint(sorted(Differ(sums1, sums2).dups))
+        >>> df = Differ(sums1, sums2)
+        >>> len(df._pairs)
+        9
+        >>> len(df.dups)
+        3
+        >>> pprint(sorted(df.dups))
         [<CompareResult 0.75, b : c>,
          <CompareResult 0.75, a : b>,
          <CompareResult 1.0, a : c>]
@@ -115,28 +125,26 @@ class Differ:
         return self._compare(f1, f2)
 
     def _compare(self, file1, file2):
-        total, ratio, diff = find_diff(
-            file1.hashes,
-            file2.hashes,
-            file1.sizes,
-            file2.sizes,
-        )
-        res = CompareResult(self, file1, file2, total, ratio, diff)
+        dire = Dire.get(file1.hashes, file2.hashes, file1.sizes, file2.sizes)
+        total = sum([x.value for x in dire])
+        matches = sum([x.value for x in dire if x.type.name == "EQUAL"])
+        ratio = (2 * matches) / (file1.size + file2.size)
+        res = CompareResult(self, file1, file2, total, ratio, dire)
         return res
 
 
 @total_ordering
 class CompareResult:
-    def __init__(self, differ, file1, file2, total, ratio, detail):
+    def __init__(self, differ, file1, file2, total, ratio, dire):
         self.differ = differ
         self.file1 = file1
         self.file2 = file2
         self.total = total
         self.ratio = ratio
-        self.detail = detail
+        self.dire = dire
 
     def get_parts(self, bar_width):
-        line1, line2 = fill_line(bar_width, self.total, self.detail)
+        line1, line2 = fill_line(bar_width, self.total, self.dire)
         return line1, line2
 
     def get_bar(self, options):
@@ -153,7 +161,7 @@ class CompareResult:
         )
 
     def __eq__(self, other):
-        return self.__key == other.__key
+        return self.__key == other.__key  # pragma: no cover
 
     def __lt__(self, other):
         return self.__key < other.__key
@@ -162,28 +170,42 @@ class CompareResult:
         return f"<CompareResult {self.ratio}, {self.file1.path} : {self.file2.path}>"
 
 
-def fill_line(bar_width, total, diff):
+def fill_line(bar_width, total, dire):
     """
     >>> from .utils import ruler
     >>> r = lambda w: ruler(w) + '\\n'
     >>> pp = lambda w, s: print(r(w) + '\\n'.join([''.join(i) for i in s]))
-    >>> pp(20, fill_line(20, 30, [['=', '=', 20, 20], ['-', '+', 10, 10]]))
+    >>> dire = Dire.get(['a', 'b'], ['a', 'c'], [20, 10], [20, 10])
+    >>> fill_line(20, 30, dire)
+    (['=============', '-------'], ['=============', '+++++++'])
+    >>> pp(20, fill_line(20, 30, dire))
     ----5----1----5----2
     =============-------
     =============+++++++
+    >>> dire = Dire.loads('R10 E20 R10 D5 I5 E10 R10 E5 R5 E10')
+    >>> pp(15, fill_line(15, 90, dire))
+    ----5----1----5
+    -===-- ==--=-==
+    +===+ +==++=+==
+    >>> pp(8, fill_line(8, 90, dire))
+    ----5---
+    -=-- =-=-=
+    +=+ +=+=+=
+
+    ===..---
+    ===..+++
     """
     zoom = bar_width / total
 
     blueprint = []
-    percents = []
-    adjust_space = []
-    for _, _, size1, size2 in diff:
+    for di in dire:
         w1, w2, = ceil(
-            size1 * zoom,
-        ), ceil(size2 * zoom)
+            di.a * zoom,
+        ), ceil(di.b * zoom)
         blueprint.append([w1, w2])
 
-        percents.append(max(size1, size2) / total)
+    adjust_space = []
+    for w1, w2 in blueprint:
         maxw = max(w1, w2)
         adjust_space.append((maxw - 1) if maxw > 1 else 0)
 
@@ -193,17 +215,20 @@ def fill_line(bar_width, total, diff):
             return blueprint
 
         shrink_target = real_width - bar_width
-        noway = shrink_target > sum(adjust_space)
-        if noway:
-            raise Exception("failed!")
+        # noway = shrink_target > sum(adjust_space)
+        # if noway:
+        #    raise Exception("failed!")
 
-        for index in islice(iter_steps(adjust_space), shrink_target):
+        def shrink(index, delta=1):
             w1, w2 = blueprint[index]
             if w1:
                 w1 = w1 - 1
             if w2:
                 w2 = w2 - 1
             blueprint[index] = [w1, w2]
+
+        for index in islice(iter_steps(adjust_space), shrink_target):
+            shrink(index)
 
         return blueprint
 
@@ -220,9 +245,9 @@ def fill_line(bar_width, total, diff):
 
     line1 = []
     line2 = []
-    for (char1, char2, _, _), (width1, width2) in zip(diff, blueprint):
-        char_bar(char1, width1, line1)
-        char_bar(char2, width2, line2)
+    for di, (width1, width2) in zip(dire, blueprint):
+        char_bar(di.ca, width1, line1)
+        char_bar(di.cb, width2, line2)
         width = max(width1, width2)
         padding_bar(width1, width, line1)
         padding_bar(width2, width, line2)
