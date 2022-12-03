@@ -189,11 +189,8 @@ def fill_line(bar_width, total, dire):
     +===+ +==++=+==
     >>> pp(8, fill_line(8, 90, dire))
     ----5---
-    -=-- =-=-=
-    +=+ +=+=+=
-
-    ===..---
-    ===..+++
+    -=-...-=
+    +=+...+=
     """
     zoom = bar_width / total
 
@@ -215,9 +212,6 @@ def fill_line(bar_width, total, dire):
             return blueprint
 
         shrink_target = real_width - bar_width
-        # noway = shrink_target > sum(adjust_space)
-        # if noway:
-        #    raise Exception("failed!")
 
         def shrink(index, delta=1):
             w1, w2 = blueprint[index]
@@ -229,6 +223,17 @@ def fill_line(bar_width, total, dire):
 
         for index in islice(iter_steps(adjust_space), shrink_target):
             shrink(index)
+
+        def ellipsis():
+            half = (bar_width - len("...")) / 2
+            left = ceil(half)
+            right = int(half)
+            for i in blueprint[left:-right]:
+                i[0] = -1
+                i[1] = -1
+
+        if shrink_target > sum(adjust_space):
+            ellipsis()
 
         return blueprint
 
@@ -246,6 +251,11 @@ def fill_line(bar_width, total, dire):
     line1 = []
     line2 = []
     for di, (width1, width2) in zip(dire, blueprint):
+        if width1 < 0 and width2 < 0:
+            if line1[-1] != "...":
+                line1.append("...")
+                line2.append("...")
+            continue
         char_bar(di.ca, width1, line1)
         char_bar(di.cb, width2, line2)
         width = max(width1, width2)
