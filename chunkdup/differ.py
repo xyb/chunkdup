@@ -1,8 +1,10 @@
 from functools import total_ordering
+from itertools import islice
 from math import ceil
 
 from .diff import find_diff
 from .diffbar import Bar
+from .utils import iter_steps
 
 
 class Differ:
@@ -161,13 +163,55 @@ class CompareResult:
 
 
 def fill_line(bar_width, total, diff):
+    """
+    >>> from .utils import ruler
+    >>> r = lambda w: ruler(w) + '\\n'
+    >>> pp = lambda w, s: print(r(w) + '\\n'.join([''.join(i) for i in s]))
+    >>> pp(20, fill_line(20, 30, [['=', '=', 20, 20], ['-', '+', 10, 10]]))
+    ----5----1----5----2
+    =============-------
+    =============+++++++
+    """
     zoom = bar_width / total
 
-    def char_bar(char, size, line):
-        width = ceil(size * zoom)
+    blueprint = []
+    percents = []
+    adjust_space = []
+    for _, _, size1, size2 in diff:
+        w1, w2, = ceil(
+            size1 * zoom,
+        ), ceil(size2 * zoom)
+        blueprint.append([w1, w2])
+
+        percents.append(max(size1, size2) / total)
+        maxw = max(w1, w2)
+        adjust_space.append((maxw - 1) if maxw > 1 else 0)
+
+    def adjust_blueprint():  # fit for the char grid
+        real_width = sum(max(x1, x2) for x1, x2 in blueprint)
+        if real_width == bar_width:
+            return blueprint
+
+        shrink_target = real_width - bar_width
+        noway = shrink_target > sum(adjust_space)
+        if noway:
+            raise Exception("failed!")
+
+        for index in islice(iter_steps(adjust_space), shrink_target):
+            w1, w2 = blueprint[index]
+            if w1:
+                w1 = w1 - 1
+            if w2:
+                w2 = w2 - 1
+            blueprint[index] = [w1, w2]
+
+        return blueprint
+
+    blueprint = adjust_blueprint()
+
+    def char_bar(char, width, line):
         if width:
             line.append(char * width)
-        return width
 
     def padding_bar(width, max_width, line):
         padding = max_width - width
@@ -176,10 +220,11 @@ def fill_line(bar_width, total, diff):
 
     line1 = []
     line2 = []
-    for char1, char2, size1, size2 in diff:
-        width1 = char_bar(char1, size1, line1)
-        width2 = char_bar(char2, size2, line2)
+    for (char1, char2, _, _), (width1, width2) in zip(diff, blueprint):
+        char_bar(char1, width1, line1)
+        char_bar(char2, width2, line2)
         width = max(width1, width2)
         padding_bar(width1, width, line1)
         padding_bar(width2, width, line2)
+
     return line1, line2
