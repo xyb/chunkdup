@@ -14,19 +14,24 @@ END = "\033[0m"
 
 
 class Bar:
-    def __init__(self, compare_result, width, options):
+    def __init__(self, compare_result, options):
         self.cr = compare_result
-        self.width = width
         self.options = options
 
     def __str__(self):
         return self.format()
 
-    def format(self):
+    def get_formatter(self):
         type = self.options.get("type", "default")
         cls = FORMATTERS.get(type)
         if cls:
-            return cls(self.cr, self).format()
+            return cls(self.cr, self)
+
+    def format(self):
+        return self.get_formatter().format()
+
+    def format_bar(self):
+        return self.get_formatter().format_bar()
 
 
 class BarFormatter:

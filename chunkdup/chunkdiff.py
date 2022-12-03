@@ -39,7 +39,7 @@ def print_diff(
         width=bar_width,
         type="oneline" if oneline else "twolines",
     )
-    bar = differ.compare(path1, path2).get_bar(bar_width, options)
+    bar = differ.compare(path1, path2).get_bar(options)
     print(str(bar), file=output or sys.stdout, flush=True)
 
 
