@@ -76,12 +76,14 @@ class OneLineFormatter(BarFormatter):
         "-+": "█",
         "- ": "▀",
         " +": "▄",
+        "..": ".",
     }
     colors = {
         "==": ["▒", GREY + GREY_BG],  # fg: grey, bg: grey
         "-+": ["▀", RED + GREEN_BG],  # fg/top half: red, bg/bottom half: green
         "- ": ["▀", RED + YELLOW_BG],  # fg: red, bg: yellow
         " +": ["▀", YELLOW + GREEN_BG],  # fg: yellow, bg: green
+        "..": [".", GREY_BG],
     }
 
     def format(self):
@@ -126,6 +128,7 @@ class TwoLinesFormatter(BarFormatter):
         "-": RED_BG,
         "+": GREEN_BG,
         " ": YELLOW_BG,
+        ".": "",
     }
 
     def format(self):
