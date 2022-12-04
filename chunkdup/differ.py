@@ -1,10 +1,9 @@
 from functools import total_ordering
-from itertools import islice
-from math import ceil
 
+from .blueprint import Blueprint
 from .diffbar import Bar
+from .dire import DiffType
 from .dire import Dire
-from .utils import iter_steps
 
 
 class Differ:
@@ -94,7 +93,7 @@ class Differ:
             if (f2.size, f2.path, f1.size, f1.path) in dups:
                 continue
 
-            cr = self._compare(f1, f2)
+            cr = self.compare_file(f1, f2)
 
             if f1.path == f2.path and cr.ratio == 1.0:
                 continue
@@ -116,18 +115,18 @@ class Differ:
         >>> sums1 = Chunksums.parse(open(f1.name))
         >>> sums2 = Chunksums.parse(open(f2.name))
         >>> from pprint import pprint
-        >>> pprint(Differ(sums1, sums2).compare('./a', './b').get_parts(20))
+        >>> pprint(Differ(sums1, sums2).compare('./a', './b').get_blueprint(20).lines())
         (['----', '====', '  ', '==', '  ', '==', '--', '  '],
          ['    ', '====', '++', '==', '++', '==', '++++'])
         """
         f1 = self.chunksums1.get_file(path1)
         f2 = self.chunksums2.get_file(path2)
-        return self._compare(f1, f2)
+        return self.compare_file(f1, f2)
 
-    def _compare(self, file1, file2):
+    def compare_file(self, file1, file2):
         dire = Dire.get(file1.hashes, file2.hashes, file1.sizes, file2.sizes)
         total = sum([x.value for x in dire])
-        matches = sum([x.value for x in dire if x.type.name == "EQUAL"])
+        matches = sum([x.value for x in dire if x.type is DiffType.EQUAL])
         ratio = (2 * matches) / (file1.size + file2.size)
         res = CompareResult(self, file1, file2, total, ratio, dire)
         return res
@@ -143,9 +142,8 @@ class CompareResult:
         self.ratio = ratio
         self.dire = dire
 
-    def get_parts(self, bar_width):
-        line1, line2 = fill_line(bar_width, self.total, self.dire)
-        return line1, line2
+    def get_blueprint(self, bar_width):
+        return Blueprint(bar_width, self.total, self.dire)
 
     def get_bar(self, options):
         return Bar(self, options)
@@ -168,98 +166,3 @@ class CompareResult:
 
     def __repr__(self):
         return f"<CompareResult {self.ratio}, {self.file1.path} : {self.file2.path}>"
-
-
-def fill_line(bar_width, total, dire):
-    """
-    >>> from .utils import ruler
-    >>> r = lambda w: ruler(w) + '\\n'
-    >>> pp = lambda w, s: print(r(w) + '\\n'.join([''.join(i) for i in s]))
-    >>> dire = Dire.get(['a', 'b'], ['a', 'c'], [20, 10], [20, 10])
-    >>> fill_line(20, 30, dire)
-    (['=============', '-------'], ['=============', '+++++++'])
-    >>> pp(20, fill_line(20, 30, dire))
-    ----5----1----5----2
-    =============-------
-    =============+++++++
-    >>> dire = Dire.loads('R10 E20 R10 D5 I5 E10 R10 E5 R5 E10')
-    >>> pp(15, fill_line(15, 90, dire))
-    ----5----1----5
-    -===-- ==--=-==
-    +===+ +==++=+==
-    >>> pp(8, fill_line(8, 90, dire))
-    ----5---
-    -=-...-=
-    +=+...+=
-    """
-    zoom = bar_width / total
-
-    blueprint = []
-    for di in dire:
-        w1, w2, = ceil(
-            di.a * zoom,
-        ), ceil(di.b * zoom)
-        blueprint.append([w1, w2])
-
-    adjust_space = []
-    for w1, w2 in blueprint:
-        maxw = max(w1, w2)
-        adjust_space.append((maxw - 1) if maxw > 1 else 0)
-
-    def adjust_blueprint():  # fit for the char grid
-        real_width = sum(max(x1, x2) for x1, x2 in blueprint)
-        if real_width == bar_width:
-            return blueprint
-
-        shrink_target = real_width - bar_width
-
-        def shrink(index, delta=1):
-            w1, w2 = blueprint[index]
-            if w1:
-                w1 = w1 - 1
-            if w2:
-                w2 = w2 - 1
-            blueprint[index] = [w1, w2]
-
-        for index in islice(iter_steps(adjust_space), shrink_target):
-            shrink(index)
-
-        def ellipsis():
-            half = (bar_width - len("...")) / 2
-            left = ceil(half)
-            right = int(half)
-            for i in blueprint[left:-right]:
-                i[0] = -1
-                i[1] = -1
-
-        if shrink_target > sum(adjust_space):
-            ellipsis()
-
-        return blueprint
-
-    blueprint = adjust_blueprint()
-
-    def char_bar(char, width, line):
-        if width:
-            line.append(char * width)
-
-    def padding_bar(width, max_width, line):
-        padding = max_width - width
-        if padding:
-            line.append(" " * padding)
-
-    line1 = []
-    line2 = []
-    for di, (width1, width2) in zip(dire, blueprint):
-        if width1 < 0 and width2 < 0:
-            if line1[-1] != "...":
-                line1.append("...")
-                line2.append("...")
-            continue
-        char_bar(di.ca, width1, line1)
-        char_bar(di.cb, width2, line2)
-        width = max(width1, width2)
-        padding_bar(width1, width, line1)
-        padding_bar(width2, width, line2)
-
-    return line1, line2
