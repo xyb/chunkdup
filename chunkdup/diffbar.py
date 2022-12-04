@@ -57,7 +57,7 @@ class BarFormatter:
             self.line1, self.line2 = line1, line2
         else:
             # lazy load?
-            self.line1, self.line2 = self.cr.get_parts(self.width)
+            self.line1, self.line2 = self.cr.get_blueprint(self.width).lines()
         if ratio is not None:
             self.ratio = ratio
         else:
