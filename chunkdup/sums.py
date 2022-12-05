@@ -76,6 +76,8 @@ class File:
             chunks=chunks,
         )
 
+    loads = parse
+
     @classmethod
     def parse_chunks(cls, data):
         alg_name, chunks = data.split("!")

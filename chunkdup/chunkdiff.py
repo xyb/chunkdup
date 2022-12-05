@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from .diffbar import BarOptions
 from .differ import Differ
 from .sums import Chunksums
 
@@ -34,7 +35,7 @@ def print_diff(
     """
 
     differ = Differ(chunksums1, chunksums2)
-    options = dict(
+    options = BarOptions(
         color=color,
         width=bar_width,
         type="oneline" if oneline else "twolines",

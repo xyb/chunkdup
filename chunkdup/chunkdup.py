@@ -3,6 +3,7 @@ import argparse
 import signal
 import sys
 
+from .diffbar import BarOptions
 from .differ import Differ
 from .sums import Chunksums
 from .utils import humanize
@@ -53,7 +54,7 @@ def print_plain_report(differ, output_file, bar=True, width=20, color=False):
     dups = sorted(differ.dups, reverse=True)
     for cr in dups:
         if bar:
-            options = dict(color=color, width=width)
+            options = BarOptions(color=color, width=width)
             # TODO add underline to highlight a bar from others
             #      use '\u0332' or '\033[4m'
             sbar = cr.get_bar(options=options).format_bar()
