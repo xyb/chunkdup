@@ -86,22 +86,25 @@ class Differ:
         if self.__dups is not None:
             return self.__dups
 
-        dups = {}
+        self.__dups = {}
         for hash1, hash2 in self._pairs:
-            f1 = self.chunksums1.hashes[hash1]
-            f2 = self.chunksums2.hashes[hash2]
-            # avoid compare two files twice
-            if (f2.size, f2.path, f1.size, f1.path) in dups:
-                continue
+            self._compare(hash1, hash2)
 
-            cr = self.compare_file(f1, f2)
-
-            if f1.path == f2.path and cr.ratio == 1.0:
-                continue
-            dups[(f1.size, f1.path, f2.size, f2.path)] = cr
-
-        self.__dups = list(dups.values())
+        self.__dups = list(self.__dups.values())
         return self.__dups
+
+    def _compare(self, hash1, hash2):
+        f1 = self.chunksums1.hashes[hash1]
+        f2 = self.chunksums2.hashes[hash2]
+        # avoid compare two files twice
+        if (f2.size, f2.path, f1.size, f1.path) in self.__dups:
+            return
+
+        cr = self.compare_file(f1, f2)
+
+        if f1.path == f2.path and cr.ratio == 1.0:
+            return
+        self.__dups[(f1.size, f1.path, f2.size, f2.path)] = cr
 
     def compare(self, path1, path2):
         """
