@@ -55,7 +55,7 @@ repos:
     rev: cc59b0431a5d072786b59430e9b342b2881064f6
     hooks:
     - id: xenon
-      args: ["--max-average=A", "--max-modules=A", "--max-absolute=B"]
+      args: ["--max-average=A", "--max-modules=A", "--max-absolute=A"]
 
   - repo: local
     hooks:
