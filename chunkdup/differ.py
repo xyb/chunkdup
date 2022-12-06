@@ -14,23 +14,23 @@ class Differ:
         self.__pairs = None
         self.__dups = None
 
+    def _prepare_same_files(self):
+        self.chunks1 = self.chunksums1.chunk2file_id
+        self.chunks2 = self.chunksums2.chunk2file_id
+        self.same_chunks = set(self.chunks1) & set(self.chunks2)
+        self.same_file_ids1 = {c: self.chunks1[c] for c in self.same_chunks}
+        self.same_file_ids2 = {c: self.chunks2[c] for c in self.same_chunks}
+
     @property
     def _pairs(self):
         """get dup file id pairs"""
         if self.__pairs is not None:
             return self.__pairs
 
-        chunks1 = self.chunksums1.chunk2file_id
-        chunks2 = self.chunksums2.chunk2file_id
-        same_chunks = set(chunks1) & set(chunks2)
-
-        same_file_ids1 = {c: chunks1[c] for c in same_chunks}
-        same_file_ids2 = {c: chunks2[c] for c in same_chunks}
-
+        self._prepare_same_files()
         file_id_pairs = []
-        for c in same_chunks:
-            ids1 = same_file_ids1[c]
-            ids2 = same_file_ids2[c]
+        for c in self.same_chunks:
+            ids1, ids2 = self.same_file_ids1[c], self.same_file_ids2[c]
             file_id_pairs.extend([(x, y) for x in ids1 for y in ids2])
         self.__pairs = sorted(set(file_id_pairs))
         return self.__pairs
@@ -99,6 +99,7 @@ class Differ:
             if f1.path == f2.path and cr.ratio == 1.0:
                 continue
             dups[(f1.size, f1.path, f2.size, f2.path)] = cr
+
         self.__dups = list(dups.values())
         return self.__dups
 
