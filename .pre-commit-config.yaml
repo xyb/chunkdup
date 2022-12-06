@@ -57,6 +57,15 @@ repos:
     - id: xenon
       args: ["--max-average=A", "--max-modules=A", "--max-absolute=B"]
 
+  - repo: local
+    hooks:
+    - id: wily
+      name: wily
+      entry: wily diff
+      verbose: true
+      language: python
+      additional_dependencies: [wily]
+
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: v0.10.1
     hooks:
