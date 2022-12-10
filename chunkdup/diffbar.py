@@ -105,7 +105,8 @@ class OneLineFormatter(BarFormatter):
         return f"{self.format_prefix()}  {self.format_bar()}"
 
     def format_bar(self):
-        line1, line2 = self.blueprint.lines()
+        line1, line2 = self.blueprint.symbols()
+
         pairs = list("".join(x) for x in zip("".join(line1), "".join(line2)))
         bar = []
         for key, group in groupby(pairs):
@@ -158,7 +159,7 @@ class TwoLinesFormatter(BarFormatter):
         def colorful(line):
             return [self.colors[s[0]] + s + END for s in line]
 
-        line1, line2 = self.blueprint.lines()
+        line1, line2 = self.blueprint.symbols()
 
         if self.color:
             line1 = colorful(line1)

@@ -119,10 +119,8 @@ class Differ:
         >>> from .sums import Chunksums
         >>> sums1 = Chunksums.parse(open(f1.name))
         >>> sums2 = Chunksums.parse(open(f2.name))
-        >>> from pprint import pprint
-        >>> pprint(Differ(sums1, sums2).compare('./a', './b').get_blueprint(20).lines())
-        (['----', '====', '  ', '==', '  ', '==', '--', '  '],
-         ['    ', '====', '++', '==', '++', '==', '++++'])
+        >>> Differ(sums1, sums2).compare('./a', './b').get_blueprint(20).symbols()
+        ('----====  ==  ==--  ', '    ====++==++==++++')
         """
         f1 = self.chunksums1.get_file(path1)
         f2 = self.chunksums2.get_file(path2)

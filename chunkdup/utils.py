@@ -1,4 +1,5 @@
 from copy import copy
+from functools import wraps
 
 
 def best_width(num):
@@ -101,3 +102,54 @@ def ruler(length):
     """
     nodes = (length // 10) + 1
     return "".join(f"----5----{(i + 1) % 10}" for i in range(nodes))[:length]
+
+
+def keep_once(iter, find):
+    """
+    >>> list(keep_once([1, 2, 2, 3], lambda x: x == 2))
+    [1, 2, 3]
+    """
+    match = False
+    for i in iter:
+        if match:
+            if not find(i):
+                match = False
+                yield i
+            continue
+        if find(i):
+            yield i
+            match = True
+        else:
+            yield i
+
+
+def memoized_property(fget):
+    """
+    >>> class C(object):
+    ...     load_name_count = 0
+    ...     @memoized_property
+    ...     def name(self):
+    ...         "name's docstring"
+    ...         self.load_name_count += 1
+    ...         return "the name"
+    >>> c = C()
+    >>> c.load_name_count
+    0
+    >>> c.name
+    'the name'
+    >>> c.load_name_count
+    1
+    >>> c.name
+    'the name'
+    >>> c.load_name_count
+    1
+    """
+    attr_name = f"_{fget.__name__}"
+
+    @wraps(fget)
+    def fget_memoized(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fget(self))
+        return getattr(self, attr_name)
+
+    return property(fget_memoized)
