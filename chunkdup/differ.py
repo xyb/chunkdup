@@ -4,6 +4,7 @@ from .blueprint import Blueprint
 from .diffbar import Bar
 from .dire import DiffType
 from .dire import Dire
+from .sums import File
 
 
 class Differ:
@@ -124,22 +125,30 @@ class Differ:
         return self.compare_file(f1, f2)
 
     def compare_file(self, file1, file2):
-        dire = Dire.get(file1.hashes, file2.hashes, file1.sizes, file2.sizes)
-        total = sum([x.value for x in dire])
-        matches = sum([x.value for x in dire if x.type is DiffType.EQUAL])
-        ratio = (2 * matches) / (file1.size + file2.size)
-        res = CompareResult(self, file1, file2, total, ratio, dire)
-        return res
+        return CompareResult(file1, file2)
 
 
 @total_ordering
 class CompareResult:
-    def __init__(self, differ, file1, file2, total, ratio, dire):
-        self.differ = differ
+    """
+    >>> s = '''bee1  ./a  fck0sha2!aa:10,bb:10,cc:5,dd:5,f1:5
+    ... bee2  ./b  fck0sha2!bb:10,f2:5,cc:5,f3:5,dd:5,f4:10'''
+    >>> cr = CompareResult.loads(s)
+    >>> cr
+    <CompareResult 0.5333333333333333, ./a : ./b>
+    >>> cr.total
+    45
+    >>> cr.dumps() == s
+    True
+    """
+
+    def __init__(self, file1, file2):
         self.file1 = file1
         self.file2 = file2
-        self.total = total
-        self.ratio = ratio
+        dire = Dire.get(file1.hashes, file2.hashes, file1.sizes, file2.sizes)
+        self.total = sum([x.value for x in dire])
+        matches = sum([x.value for x in dire if x.type is DiffType.EQUAL])
+        self.ratio = (2 * matches) / (file1.size + file2.size)
         self.dire = dire
 
     def get_blueprint(self, bar_width):
@@ -166,3 +175,11 @@ class CompareResult:
 
     def __repr__(self):
         return f"<CompareResult {self.ratio}, {self.file1.path} : {self.file2.path}>"
+
+    def dumps(self):
+        return f"{self.file1.dumps()}\n{self.file2.dumps()}"
+
+    @classmethod
+    def loads(cls, s):
+        s1, s2 = s.split("\n")
+        return cls(File.loads(s1), File.loads(s2))

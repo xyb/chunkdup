@@ -15,17 +15,15 @@ END = "\033[0m"
 
 class Bar:
     def __init__(self, compare_result, options):
-        self.cr = compare_result
+        self.compare_result = compare_result
         self.options = options
 
     def __str__(self):
         return self.format()
 
     def get_formatter(self):
-        type = self.options.get("type", "default")
-        cls = FORMATTERS.get(type)
-        if cls:
-            return cls(self.cr, self)
+        cls = BarFormatter.get(self.options.type)
+        return cls(self)
 
     def format(self):
         return self.get_formatter().format()
@@ -34,40 +32,42 @@ class Bar:
         return self.get_formatter().format_bar()
 
 
+class BarOptions:
+    def __init__(self, width=40, color=True, type="default"):
+        self.width = width
+        self.color = color
+        self.type = type
+
+
 class BarFormatter:
     def __init__(
         self,
-        compare_result,
         bar,
-        ratio=None,
-        width=None,
-        line1=None,
-        line2=None,
-        file1size=None,
-        file2size=None,
-        color=None,
     ):
-        self.cr = compare_result
         self.bar = bar
-        if width is not None:
-            self.width = width
+        self.width = bar.options.width
+        self.color = bar.options.color
+        self.blueprint = bar.compare_result.get_blueprint(self.width)
+        self.ratio = bar.compare_result.ratio
+        self.file1size = bar.compare_result.file1.size
+        self.file2size = bar.compare_result.file2.size
+
+    @classmethod
+    def get(cls, type):
+        """
+        >>> BarFormatter.get('oneline')
+        <class 'chunkdup.diffbar.OneLineFormatter'>
+        >>> try:
+        ...     BarFormatter.get('nothing')
+        ... except:
+        ...     print('error')
+        error
+        """
+        cls = FORMATTERS.get(type)
+        if cls:
+            return cls
         else:
-            self.width = bar.options["width"]
-        if line1 is not None and line2 is not None:
-            self.line1, self.line2 = line1, line2
-        else:
-            # lazy load?
-            self.line1, self.line2 = self.cr.get_blueprint(self.width).lines()
-        if ratio is not None:
-            self.ratio = ratio
-        else:
-            self.ratio = self.cr.ratio
-        self.file1size = file1size or self.cr.file1.size
-        self.file2size = file2size or self.cr.file2.size
-        if color is not None:
-            self.color = color
-        else:
-            self.color = self.bar.options["color"]
+            raise Exception(f"no such type formatter: {type}")
 
 
 class OneLineFormatter(BarFormatter):
@@ -88,20 +88,25 @@ class OneLineFormatter(BarFormatter):
 
     def format(self):
         """
-        >>> partial = lambda *args, **kwargs: OneLineFormatter(
-        ...           None, None, *args, **kwargs).format()
-        >>> line1 = ['-----', '==', '     ', '===']
-        >>> line2 = ['++', '   ', '==', '+++++', '===']
-        >>> partial(0.6, 40, line1, line2, 100, 70, color=False)
-        ' 60.00%  ▀100B  ▄70B  ██▀▀▀▒▒▄▄▄▄▄▒▒▒'
-        >>> partial(0.6, 40, line1, line2, 100, 70, color=True)
+        >>> s = '''bee1  ./a  fck0sha2!aa:10,bb:10,cc:5,dd:5,f1:10
+        ... bee2  ./b  fck0sha2!bb:10,f2:5,cc:5,f3:5,dd:5,f4:10'''
+        >>> from .differ import CompareResult
+        >>> cr = CompareResult.loads(s)
+        >>> bo = BarOptions(width=20, color=False, type='oneline')
+        >>> fmt = OneLineFormatter(cr.get_bar(bo))
+        >>> print(fmt.format())
+         50.00%  ▀40B  ▄40B  ▀▀▀▀▒▒▒▒▄▄▒▒▄▄▒▒████
+        >>> bo = BarOptions(width=20, color=True, type='oneline')
+        >>> fmt = OneLineFormatter(cr.get_bar(bo))
+        >>> print(fmt.format())
         ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-        ' 60.00%  ▀100B  ▄70B  ...'
+         50.00%  ▀40B  ▄40B  ...
         """
         return f"{self.format_prefix()}  {self.format_bar()}"
 
     def format_bar(self):
-        pairs = list("".join(x) for x in zip("".join(self.line1), "".join(self.line2)))
+        line1, line2 = self.blueprint.lines()
+        pairs = list("".join(x) for x in zip("".join(line1), "".join(line2)))
         bar = []
         for key, group in groupby(pairs):
             width = len(list(group))
@@ -133,23 +138,27 @@ class TwoLinesFormatter(BarFormatter):
 
     def format(self):
         """
-        >>> partial = lambda *args, **kwargs: TwoLinesFormatter(
-        ...           None, None, *args, **kwargs).format()
-        >>> line1 = ['-----', '==', '-----', '===']
-        >>> line2 = ['++', '   ', '==', '+', '    ', '===']
-        >>> print(partial(0.5, 40, line1, line2, 100, 70, color=False))
-         50.00%    100B  -----==-----===
-                    70B  ++   ==+    ===
-        >>> print(partial(0.5, 40, line1, line2, 100, 70, color=True))
+        >>> s = '''bee1  ./a  fck0sha2!aa:10,bb:10,cc:5,dd:5,f1:10
+        ... bee2  ./b  fck0sha2!bb:10,f2:5,cc:5,f3:5,dd:5,f4:10'''
+        >>> from .differ import CompareResult
+        >>> cr = CompareResult.loads(s)
+        >>> bo = BarOptions(width=20, color=False, type='twolines')
+        >>> fmt = TwoLinesFormatter(cr.get_bar(bo))
+        >>> print(fmt.format())
+         50.00%     40B  ----====  ==  ==----
+                    40B      ====++==++==++++
+        >>> bo = BarOptions(width=20, color=True, type='twolines')
+        >>> fmt = TwoLinesFormatter(cr.get_bar(bo))
+        >>> print(fmt.format())
         ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-         50.00%    100B  ...
-                    70B  ...
+         50.00%     40B  ...
+                    40B  ...
         """
 
         def colorful(line):
             return [self.colors[s[0]] + s + END for s in line]
 
-        line1, line2 = self.line1, self.line2
+        line1, line2 = self.blueprint.lines()
 
         if self.color:
             line1 = colorful(line1)
