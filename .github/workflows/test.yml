@@ -68,4 +68,8 @@ jobs:
           path: ~/.cache/pre-commit
           key: "${{ hashFiles('.pre-commit-config.yaml') }}"
 
+      - run: pip install wily
+
+      - run: wily build chunkdup/
+
       - run: pre-commit run --all-files --show-diff-on-failure

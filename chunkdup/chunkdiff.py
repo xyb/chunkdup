@@ -57,43 +57,7 @@ Examples:
 """
 
 
-def main():
-    """
-    >>> sys.argv = ['chunkdiff']
-    >>> try:
-    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    ... except:
-    ...     pass
-    usage: chunkdiff ...
-    Show the difference ...
-    ...
-
-    >>> import tempfile
-    >>> f = tempfile.NamedTemporaryFile()
-    >>> _ = f.write(
-    ... b'bee1  ./a  fck0sha2!aa:1000,bb:1000,cc:1000,f1:500,dd:500,f2:500\\n'
-    ... b'bee2  ./b  fck0sha2!bb:1000,cc:1000,f3:1000,f4:500,dd:500,f5:500\\n'
-    ... )
-    >>> f.flush()
-    >>> s = f.name
-    >>> sys.argv = ['chunkdiff', '-s', s, '-s', s, './a', './b', '--nocolor']
-    >>> main()
-     55.56%  ▀4.39KB  ▄4.39KB  ▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒███▄▄▄▄▄▄▄▄▄▒▒▒███
-    >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-w', '10']
-    >>> main()
-     55.56%  ▀4.39KB  ▄4.39KB  ▀▀▒▒▒█▄▄▒█
-    >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-b', 'twolines']
-    >>> main()
-     55.56%  4.39KB  -------===============---         ===---
-             4.39KB         ===============++++++++++++===+++
-
-    >>> sys.argv = ['chunkdiff', '-s', s, './bad', './beef']
-    >>> try:
-    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-    ... except:
-    ...     pass
-    file path not found: ./bad
-    """
+def parse_argument():
     parser = argparse.ArgumentParser(
         description=command_desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -131,6 +95,47 @@ def main():
     if not (args.chunksums and args.file1 and args.file2):
         parser.print_help()
         sys.exit()
+    return args
+
+
+def main():
+    """
+    >>> sys.argv = ['chunkdiff']
+    >>> try:
+    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except:
+    ...     pass
+    usage: chunkdiff ...
+    Show the difference ...
+    ...
+
+    >>> import tempfile
+    >>> f = tempfile.NamedTemporaryFile()
+    >>> _ = f.write(
+    ... b'bee1  ./a  fck0sha2!aa:1000,bb:1000,cc:1000,f1:500,dd:500,f2:500\\n'
+    ... b'bee2  ./b  fck0sha2!bb:1000,cc:1000,f3:1000,f4:500,dd:500,f5:500\\n'
+    ... )
+    >>> f.flush()
+    >>> s = f.name
+    >>> sys.argv = ['chunkdiff', '-s', s, '-s', s, './a', './b', '--nocolor']
+    >>> main()
+     55.56%  ▀4.39KB  ▄4.39KB  ▀▀▀▀▀▀▀▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒███▄▄▄▄▄▄▄▄▄▒▒▒███
+    >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-w', '10']
+    >>> main()
+     55.56%  ▀4.39KB  ▄4.39KB  ▀▀▒▒▒█▄▄▒█
+    >>> sys.argv = ['chunkdiff', '-s', s, './a', './b', '-n', '-b', 'twolines']
+    >>> main()
+     55.56%  4.39KB  -------===============---         ===---
+             4.39KB         ===============++++++++++++===+++
+
+    >>> sys.argv = ['chunkdiff', '-s', s, './bad', './beef']
+    >>> try:
+    ...     main()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ... except:
+    ...     pass
+    file path not found: ./bad
+    """
+    args = parse_argument()
 
     chunksums1 = chunksums2 = args.chunksums[0]
     if len(args.chunksums) > 1:

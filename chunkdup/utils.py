@@ -41,33 +41,48 @@ def humanize(num):
     return f"{num:.1f}YB"
 
 
+def get_order_indexes(list):
+    """
+    >>> get_order_indexes([1, 2, 3])
+    [2, 1, 0]
+    >>> get_order_indexes([1, 2, 1])
+    [1, 0, 2]
+    """
+    return [
+        i
+        for _, i in sorted(
+            [[v, i] for i, v in enumerate(list)],
+            reverse=True,
+            key=lambda x: x[0],
+        )
+    ]
+
+
 def iter_steps(stairs):
     """
-    get steps bottom to top from the tallest stairs
+    climb all the stairs with minimal energy
 
-         2        2
-       1 2 3      2 1 3
-    --------- => ----------- => [2, 1, 3, 2]
-     0 1 2 3      2 1 3 0
+         2            2
+       1 2 3   sort   2 1 3     iter  from bottom to top
+    --------- =====> --------- =====> [2, 1, 3, 2]
+     0 1 2 3          2 1 3 0
+
+    >>> list(iter_steps([0, 1, 2, 1]))
+    [2, 1, 3, 2]
     >>> list(iter_steps([1, 2, 3]))
     [2, 1, 0, 2, 1, 2]
     >>> list(iter_steps([3, 2, 1]))
     [0, 1, 2, 0, 1, 0]
-    >>> list(iter_steps([0, 1, 2, 1]))
-    [2, 1, 3, 2]
     >>> list(iter_steps([]))
     []
     """
 
     if not stairs:
         return
+
     steps = copy(stairs)
-    order = sorted(
-        [[v, i] for i, v in enumerate(stairs)],
-        reverse=True,
-        key=lambda x: x[0],
-    )
-    order = [i for _, i in order]
+    order = get_order_indexes(steps)
+
     while steps[order[0]] > 0:
         for i in order:
             if steps[i] == 0:
